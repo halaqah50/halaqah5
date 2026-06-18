@@ -606,7 +606,7 @@ export default function App() {
     fileReader.readAsText(files[0]);
   };
 
-  // Send data to Apps Script Web App for real-time sync (100% free, no billing)
+  // Send data to Apps Script Web App for real-time sync
   const sendToAppsScript = async (action: string, data: any) => {
     if (!appsScriptUrl) return;
     try {
@@ -624,7 +624,7 @@ export default function App() {
     }
   };
 
-  // Sync / pull all data from Google Sheet (100% free, no billing)
+  // Sync / pull all data from Google Sheet
   const handleSyncFromAppsScript = async (silent = false) => {
     if (!appsScriptUrl) {
       if (!silent) alert('Silakan masukkan URL Aplikasi Web Google Apps Script Anda terlebih dahulu di tab Google Sheet.');
@@ -643,7 +643,7 @@ export default function App() {
           pembina: json.pembina && json.pembina.length > 0 ? json.pembina : s.pembina,
           attendance: json.attendance && json.attendance.length > 0 ? json.attendance : s.attendance,
           attendancePembina: json.attendancePembina && json.attendancePembina.length > 0 ? json.attendancePembina : s.attendancePembina,
-          spreadsheetId: 'Google Sheet (Gratis)',
+          spreadsheetId: 'Google Sheet Terhubung',
           error: null
         }));
         if (!silent) showToast('Sinkronisasi sukses! Data terbaru berhasil ditarik dari Google Sheets.');
@@ -660,7 +660,7 @@ export default function App() {
     }
   };
 
-  // Bulk Upload local database to Google Sheet (100% free, no billing)
+  // Bulk Upload local database to Google Sheet
   const handleBulkUploadToAppsScript = async () => {
     if (!appsScriptUrl) {
       alert('Silakan masukkan URL Aplikasi Web Google Apps Script Anda terlebih dahulu.');
@@ -1155,26 +1155,6 @@ export default function App() {
 
         {/* Sync state indicator and user Profile */}
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={handleExportData}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all shadow-xs cursor-pointer"
-            title="Ekspor seluruh database ke file JSON"
-          >
-            <FileCheck2 className="w-3.5 h-3.5 text-blue-900" />
-            <span>Ekspor (JSON)</span>
-          </button>
-
-          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all shadow-xs cursor-pointer">
-            <RefreshCw className="w-3.5 h-3.5 text-blue-900 animate-pulse" />
-            <span>Impor (JSON)</span>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportData}
-              className="hidden"
-            />
-          </label>
-
           <button
             onClick={handleRefresh}
             disabled={isRefreshing || state.isLoading}
@@ -1681,51 +1661,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Scanned Presence logs in this browser active session */}
-                  <div className="glass-card rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                      <div>
-                        <h4 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Papan Log Kehadiran Hari Ini</h4>
-                        <p className="text-[10px] text-slate-500 mt-0.5 font-semibold">Daftar kehadiran yang baru dicatatkan oleh Admin.</p>
-                      </div>
-                      <Volume2 className="w-4 h-4 text-blue-900 animate-pulse" />
-                    </div>
 
-                    <div className="divide-y divide-slate-100 overflow-y-auto max-h-[340px] bg-white">
-                      {state.attendance.length === 0 ? (
-                        <div className="py-12 text-center text-slate-450 text-xs font-semibold">
-                          Belum ada aktivitas presensi atau scan hari ini.
-                        </div>
-                      ) : (
-                        state.attendance.slice(0, 50).map((record, idx) => (
-                          <div key={record.timestamp + idx} className="px-6 py-3.5 flex items-center justify-between text-xs hover:bg-slate-50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-900 border border-blue-100/60 font-bold flex items-center justify-center text-[10px]">
-                                {state.attendance.length - idx}
-                              </span>
-                              <div>
-                                <span className="font-extrabold text-slate-900 block">{record.nama}</span>
-                                <span className="text-[10px] text-slate-500 block mt-0.5">Pertemuan: {record.pertemuan} • Pendamping: Kelompok Halaqah</span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] text-slate-400 font-mono font-semibold">{record.timestamp.split(' ')[1] || record.timestamp}</span>
-                              <span className={`px-2 py-0.5 font-bold uppercase tracking-wider text-[9px] rounded-md ${
-                                record.status === 'Hadir' 
-                                  ? 'bg-blue-50 text-blue-900 border border-blue-100' 
-                                  : record.status === 'Izin' 
-                                  ? 'bg-amber-50 text-amber-600 border border-amber-100' 
-                                  : 'bg-rose-50 text-rose-600 border border-rose-100'
-                              }`}>
-                                {record.status}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
 
                 </div>
 
@@ -2152,8 +2088,8 @@ export default function App() {
                       </h3>
                       <p className="text-xs opacity-90 leading-relaxed mt-1 font-semibold">
                         {appsScriptUrl 
-                          ? 'Setiap penambahan Anggota, Pembina, dan Presensi akan terkirim secara otomatis (real-time) ke Google Sheet Anda tanpa biaya billing.' 
-                          : 'Saat ini aplikasi berjalan luring di browser Anda. Anda bisa mengaktifkan integrasi Google Sheet secara gratis menggunakan modul Apps Script di bawah.'}
+                          ? 'Setiap penambahan Anggota, Pembina, dan Presensi akan terkirim secara otomatis (real-time) ke Google Sheet Anda.' 
+                          : 'Saat ini aplikasi berjalan luring di browser Anda. Anda bisa mengaktifkan integrasi Google Sheet menggunakan modul Apps Script di bawah.'}
                       </p>
                     </div>
                   </div>
@@ -2175,7 +2111,7 @@ export default function App() {
                 {/* 2. Configuration Form */}
                 <div className="glass-card bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-6">
                   <div>
-                    <h3 className="text-xs font-bold text-slate-800 tracking-wider uppercase">Konfigurasi Jembatan Apps Script (100% Gratis & Tanpa Billing)</h3>
+                    <h3 className="text-xs font-bold text-slate-800 tracking-wider uppercase">Konfigurasi Jembatan Apps Script</h3>
                     <p className="text-[10px] text-slate-500 font-semibold mt-1">Masukkan URL Aplikasi Web Google Apps Script hasil penyebaran (deploy) untuk memulai integrasi.</p>
                   </div>
 
@@ -2230,7 +2166,7 @@ export default function App() {
                 <div className="glass-card bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-6">
                   <div>
                     <h3 className="text-xs font-bold text-slate-800 tracking-wider uppercase">Panduan Pemasangan Google Apps Script (5 Menit Selesai)</h3>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-1">Ikuti langkah-langkah mudah berikut untuk mengintegrasikan Google Spreadsheet Anda secara gratis:</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-1">Ikuti langkah-langkah mudah berikut untuk mengintegrasikan Google Spreadsheet Anda:</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-700 font-medium leading-relaxed">
