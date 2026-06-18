@@ -240,7 +240,7 @@ export async function fetchHalaqahData(
   // Ensure that all required sheets exist and are formatted with headers
   await ensureSheetsExist(spreadsheetId, accessToken);
 
-  const ranges = ['Members!A2:D1000', 'Attendance!A2:F5000', 'Pembina!A2:D1000', 'Attendance_Pembina!A2:E2000'];
+  const ranges = ['Members!A1:E1000', 'Attendance!A1:G5000', 'Pembina!A1:E1000', 'Attendance_Pembina!A1:F2000'];
   const queryRanges = ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?${queryRanges}&majorDimension=ROWS`;
 
@@ -258,42 +258,114 @@ export async function fetchHalaqahData(
 
   // Parse Members (range index 0)
   const membersRows = valueRanges[0]?.values || [];
-  const members: Member[] = membersRows.map((row: string[]) => ({
-    nama: row[0] || '',
-    alamat: row[1] || '',
-    nomorWA: row[2] || '',
-    tanggalBergabung: row[3] || '',
-  })).filter((m: Member) => m.nama !== '');
+  let members: Member[] = [];
+  if (membersRows.length > 1) {
+    const header = membersRows[0].map((cell: any) => cell.toString().trim().toLowerCase());
+    
+    let nameIdx = header.indexOf('nama');
+    let addressIdx = header.indexOf('alamat');
+    let waIdx = header.indexOf('nomor wa');
+    if (waIdx === -1) waIdx = header.indexOf('no whatsapp');
+    if (waIdx === -1) waIdx = header.indexOf('whatsapp');
+    let dateIdx = header.indexOf('tanggal bergabung');
+    if (dateIdx === -1) dateIdx = header.indexOf('tanggal');
+
+    // Fallbacks if not found
+    if (nameIdx === -1) nameIdx = 0;
+    if (addressIdx === -1) addressIdx = 1;
+    if (waIdx === -1) waIdx = 2;
+    if (dateIdx === -1) dateIdx = 3;
+
+    members = membersRows.slice(1).map((row: string[]) => ({
+      nama: row[nameIdx] || '',
+      alamat: row[addressIdx] || '',
+      nomorWA: row[waIdx] || '',
+      tanggalBergabung: row[dateIdx] || '',
+    })).filter((m: Member) => m.nama !== '');
+  }
 
   // Parse Attendance (range index 1)
   const attendanceRows = valueRanges[1]?.values || [];
-  const attendance: Attendance[] = attendanceRows.map((row: string[]) => ({
-    timestamp: row[0] || '',
-    nama: row[1] || '',
-    tanggal: row[2] || '',
-    pertemuan: row[3] || '',
-    status: (row[4] as any) || 'Hadir',
-    pembina: row[5] || '',
-  })).filter((a: Attendance) => a.nama !== '');
+  let attendance: Attendance[] = [];
+  if (attendanceRows.length > 1) {
+    const header = attendanceRows[0].map((cell: any) => cell.toString().trim().toLowerCase());
+    let timestampIdx = header.indexOf('timestamp');
+    let nameIdx = header.indexOf('nama');
+    let dateIdx = header.indexOf('tanggal');
+    let meetingIdx = header.indexOf('pertemuan');
+    let statusIdx = header.indexOf('status');
+    let mentorIdx = header.indexOf('pembina');
+
+    if (timestampIdx === -1) timestampIdx = 0;
+    if (nameIdx === -1) nameIdx = 1;
+    if (dateIdx === -1) dateIdx = 2;
+    if (meetingIdx === -1) meetingIdx = 3;
+    if (statusIdx === -1) statusIdx = 4;
+    if (mentorIdx === -1) mentorIdx = 5;
+
+    attendance = attendanceRows.slice(1).map((row: string[]) => ({
+      timestamp: row[timestampIdx] || '',
+      nama: row[nameIdx] || '',
+      tanggal: row[dateIdx] || '',
+      pertemuan: row[meetingIdx] || '',
+      status: (row[statusIdx] as any) || 'Hadir',
+      pembina: row[mentorIdx] || '',
+    })).filter((a: Attendance) => a.nama !== '');
+  }
 
   // Parse Pembina (range index 2)
   const pembinaRows = valueRanges[2]?.values || [];
-  const pembina: Pembina[] = pembinaRows.map((row: string[]) => ({
-    nama: row[0] || '',
-    alamat: row[1] || '',
-    nomorWA: row[2] || '',
-    tanggalBergabung: row[3] || '',
-  })).filter((p: Pembina) => p.nama !== '');
+  let pembina: Pembina[] = [];
+  if (pembinaRows.length > 1) {
+    const header = pembinaRows[0].map((cell: any) => cell.toString().trim().toLowerCase());
+    
+    let nameIdx = header.indexOf('nama');
+    let addressIdx = header.indexOf('alamat');
+    let waIdx = header.indexOf('nomor wa');
+    if (waIdx === -1) waIdx = header.indexOf('no whatsapp');
+    if (waIdx === -1) waIdx = header.indexOf('whatsapp');
+    let dateIdx = header.indexOf('tanggal bergabung');
+    if (dateIdx === -1) dateIdx = header.indexOf('tanggal');
+
+    // Fallbacks
+    if (nameIdx === -1) nameIdx = 0;
+    if (addressIdx === -1) addressIdx = 1;
+    if (waIdx === -1) waIdx = 2;
+    if (dateIdx === -1) dateIdx = 3;
+
+    pembina = pembinaRows.slice(1).map((row: string[]) => ({
+      nama: row[nameIdx] || '',
+      alamat: row[addressIdx] || '',
+      nomorWA: row[waIdx] || '',
+      tanggalBergabung: row[dateIdx] || '',
+    })).filter((p: Pembina) => p.nama !== '');
+  }
 
   // Parse Attendance Pembina (range index 3)
   const attendancePembinaRows = valueRanges[3]?.values || [];
-  const attendancePembina: AttendancePembina[] = attendancePembinaRows.map((row: string[]) => ({
-    timestamp: row[0] || '',
-    nama: row[1] || '',
-    tanggal: row[2] || '',
-    pertemuan: row[3] || '',
-    status: (row[4] as any) || 'Hadir',
-  })).filter((ap: AttendancePembina) => ap.nama !== '');
+  let attendancePembina: AttendancePembina[] = [];
+  if (attendancePembinaRows.length > 1) {
+    const header = attendancePembinaRows[0].map((cell: any) => cell.toString().trim().toLowerCase());
+    let timestampIdx = header.indexOf('timestamp');
+    let nameIdx = header.indexOf('nama');
+    let dateIdx = header.indexOf('tanggal');
+    let meetingIdx = header.indexOf('pertemuan');
+    let statusIdx = header.indexOf('status');
+
+    if (timestampIdx === -1) timestampIdx = 0;
+    if (nameIdx === -1) nameIdx = 1;
+    if (dateIdx === -1) dateIdx = 2;
+    if (meetingIdx === -1) meetingIdx = 3;
+    if (statusIdx === -1) statusIdx = 4;
+
+    attendancePembina = attendancePembinaRows.slice(1).map((row: string[]) => ({
+      timestamp: row[timestampIdx] || '',
+      nama: row[nameIdx] || '',
+      tanggal: row[dateIdx] || '',
+      pertemuan: row[meetingIdx] || '',
+      status: (row[statusIdx] as any) || 'Hadir',
+    })).filter((ap: AttendancePembina) => ap.nama !== '');
+  }
 
   return { members, attendance, pembina, attendancePembina };
 }

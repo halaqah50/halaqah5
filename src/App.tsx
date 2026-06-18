@@ -84,19 +84,19 @@ function doGet(e) {
     if (membersSheet) {
       var rows = membersSheet.getDataRange().getValues();
       if (rows.length > 1) {
-        var header = rows[0];
-        // Check if the first column is a Timestamp header
-        var hasTimestamp = false;
-        if (header && header[0]) {
-          var h0 = header[0].toString().toLowerCase();
-          if (h0.indexOf("time") > -1 || (h0.indexOf("tanggal") > -1 && h0 !== "tanggal bergabung")) {
-            hasTimestamp = true;
-          }
-        }
-        var nameIdx = hasTimestamp ? 1 : 0;
-        var addressIdx = hasTimestamp ? 2 : 1;
-        var waIdx = hasTimestamp ? 3 : 2;
-        var dateIdx = hasTimestamp ? 4 : 3;
+        var header = rows[0].map(function(c) { return c ? c.toString().toLowerCase().trim() : ""; });
+        var nameIdx = header.indexOf("nama");
+        var addressIdx = header.indexOf("alamat");
+        var waIdx = header.indexOf("nomor wa");
+        if (waIdx === -1) waIdx = header.indexOf("no whatsapp");
+        if (waIdx === -1) waIdx = header.indexOf("whatsapp");
+        var dateIdx = header.indexOf("tanggal bergabung");
+        if (dateIdx === -1) dateIdx = header.indexOf("tanggal");
+
+        if (nameIdx === -1) nameIdx = 0;
+        if (addressIdx === -1) addressIdx = 1;
+        if (waIdx === -1) waIdx = 2;
+        if (dateIdx === -1) dateIdx = 3;
 
         for (var i = 1; i < rows.length; i++) {
           if (rows[i][nameIdx]) {
@@ -136,19 +136,19 @@ function doGet(e) {
     if (pembinaSheet) {
       var rows = pembinaSheet.getDataRange().getValues();
       if (rows.length > 1) {
-        var header = rows[0];
-        // Check if the first column is a Timestamp header
-        var hasTimestamp = false;
-        if (header && header[0]) {
-          var h0 = header[0].toString().toLowerCase();
-          if (h0.indexOf("time") > -1 || (h0.indexOf("tanggal") > -1 && h0 !== "tanggal bergabung")) {
-            hasTimestamp = true;
-          }
-        }
-        var nameIdx = hasTimestamp ? 1 : 0;
-        var addressIdx = hasTimestamp ? 2 : 1;
-        var waIdx = hasTimestamp ? 3 : 2;
-        var dateIdx = hasTimestamp ? 4 : 3;
+        var header = rows[0].map(function(c) { return c ? c.toString().toLowerCase().trim() : ""; });
+        var nameIdx = header.indexOf("nama");
+        var addressIdx = header.indexOf("alamat");
+        var waIdx = header.indexOf("nomor wa");
+        if (waIdx === -1) waIdx = header.indexOf("no whatsapp");
+        if (waIdx === -1) waIdx = header.indexOf("whatsapp");
+        var dateIdx = header.indexOf("tanggal bergabung");
+        if (dateIdx === -1) dateIdx = header.indexOf("tanggal");
+
+        if (nameIdx === -1) nameIdx = 0;
+        if (addressIdx === -1) addressIdx = 1;
+        if (waIdx === -1) waIdx = 2;
+        if (dateIdx === -1) dateIdx = 3;
 
         for (var i = 1; i < rows.length; i++) {
           if (rows[i][nameIdx]) {
@@ -349,7 +349,11 @@ export default function App() {
   // UI state
   const [activeTab, setActiveTab ] = useState<'dashboard' | 'scan' | 'members' | 'pembina' | 'sheets'>('dashboard');
   const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => {
-    return localStorage.getItem('halaqah_apps_script_url') || '';
+    const stored = localStorage.getItem('halaqah_apps_script_url');
+    if (stored && stored.trim() !== '') return stored;
+    const defaultUrl = 'https://script.google.com/macros/s/AKfycbyKJBicRwQf8QPQuwtDIgEO2cX4IHcVg4s9oKj2KsHUSV1OIvXBE7P9SIVZOKRHb3BjRA/exec';
+    localStorage.setItem('halaqah_apps_script_url', defaultUrl);
+    return defaultUrl;
   });
   const [isRefreshing, setIsRefreshing ] = useState(false);
   const [successToast, setSuccessToast ] = useState<string | null>(null);
