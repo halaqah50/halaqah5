@@ -1,0 +1,6 @@
+{
+  "name": "Administrasi Halaqah 5.0",
+  "description": "Sistem administrasi aktivitas halaqah mandiri dengan fitur scan QR code kehadiran, rekapitulasi data, pendaftaran anggota baru, pembina, laporan cetak PDF, ekspor-impor JSON database, dan penyimpanan luring browser instan gratis tanpa biaya.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
