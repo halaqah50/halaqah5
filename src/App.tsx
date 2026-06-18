@@ -43,9 +43,6 @@ import {
 const STORAGE_KEY = 'halaqah_offline_db_v2';
 
 const DEFAULT_MEMBERS: Member[] = [
-  { nama: 'Ahmad Fauzan', alamat: 'Jl. Margonda Raya No. 12', nomorWA: '081234567891', tanggalBergabung: '10 Januari 2026' },
-  { nama: 'Budi Santoso', alamat: 'Jl. Kemang Pratama Blok A5', nomorWA: '085712345672', tanggalBergabung: '12 Januari 2026' },
-  { nama: 'Candra Wijaya', alamat: 'Jl. Dago No. 142', nomorWA: '089912345673', tanggalBergabung: '15 Januari 2026' },
   { nama: 'Dedi Kurniawan', alamat: 'Jl. Malioboro No. 55', nomorWA: '082112345674', tanggalBergabung: '18 Januari 2026' },
   { nama: 'Eko Prasetyo', alamat: 'Jl. Simpang Lima No. 3', nomorWA: '081312345675', tanggalBergabung: '20 Januari 2026' },
 ];
@@ -56,11 +53,10 @@ const DEFAULT_PEMBINA: Pembina[] = [
 ];
 
 const DEFAULT_ATTENDANCE: Attendance[] = [
-  { timestamp: '2026-06-10 08:00:00', nama: 'Ahmad Fauzan', tanggal: '10/06/2026', pertemuan: 'Pertemuan 1', status: 'Hadir', pembina: 'Ustadz Ahmad Fauzi' },
-  { timestamp: '2026-06-10 08:02:00', nama: 'Budi Santoso', tanggal: '10/06/2026', pertemuan: 'Pertemuan 1', status: 'Hadir', pembina: 'Ustadz Ahmad Fauzi' },
-  { timestamp: '2026-06-10 08:15:00', nama: 'Candra Wijaya', tanggal: '10/06/2026', pertemuan: 'Pertemuan 1', status: 'Izin', pembina: 'Ustadz Ahmad Fauzi' },
-  { timestamp: '2026-06-17 08:05:00', nama: 'Ahmad Fauzan', tanggal: '17/06/2026', pertemuan: 'Pertemuan 2', status: 'Hadir', pembina: 'Ustadz Ahmad Fauzi' },
-  { timestamp: '2026-06-17 08:10:00', nama: 'Budi Santoso', tanggal: '17/06/2026', pertemuan: 'Pertemuan 2', status: 'Sakit', pembina: 'Ustadz Ahmad Fauzi' },
+  { timestamp: '2026-06-10 08:00:00', nama: 'Dedi Kurniawan', tanggal: '10/06/2026', pertemuan: 'Pertemuan 1', status: 'Hadir', pembina: 'Ustadz Ahmad Fauzi' },
+  { timestamp: '2026-06-10 08:05:00', nama: 'Eko Prasetyo', tanggal: '10/06/2026', pertemuan: 'Pertemuan 1', status: 'Hadir', pembina: 'Ustadz Ahmad Fauzi' },
+  { timestamp: '2026-06-17 08:00:00', nama: 'Dedi Kurniawan', tanggal: '17/06/2026', pertemuan: 'Pertemuan 2', status: 'Hadir', pembina: 'Ustadz Ahmad Fauzi' },
+  { timestamp: '2026-06-17 08:05:00', nama: 'Eko Prasetyo', tanggal: '17/06/2026', pertemuan: 'Pertemuan 2', status: 'Izin', pembina: 'Ustadz Ahmad Fauzi' },
 ];
 
 const DEFAULT_ATTENDANCE_PEMBINA: AttendancePembina[] = [
@@ -327,7 +323,7 @@ function doPost(e) {
 export default function App() {
   // Auth state - Hardcoded to offline secure admin
   const [user, setUser] = useState<any>({
-    displayName: 'Admin Halaqah 5.0',
+    displayName: 'Admin HALAQAH 5.0',
     email: 'admin@halaqah.local',
     photoURL: null
   });
@@ -399,7 +395,7 @@ export default function App() {
   const [searchMemberQuery, setSearchMemberQuery] = useState('');
 
   // Audio confirm feedback
-  const playSoundEffect = (type: 'success' | 'click' | 'info') => {
+  const playSoundEffect = (type: 'success' | 'click' | 'info' | 'error') => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioCtx.createOscillator();
@@ -415,6 +411,13 @@ export default function App() {
         gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.22);
+      } else if (type === 'error') {
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+        oscillator.frequency.setValueAtTime(120, audioCtx.currentTime + 0.12);
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.25);
       } else {
         oscillator.type = 'triangle';
         oscillator.frequency.setValueAtTime(500, audioCtx.currentTime);
@@ -850,6 +853,19 @@ export default function App() {
       m => m.nama.toLowerCase() === scannedName.toLowerCase()
     );
 
+    const checkName = matchingMember?.nama || scannedName;
+
+    // Check if duplicate for the same session (pertemuan)
+    const isDuplicate = state.attendance.some(
+      att => att.nama.toLowerCase() === checkName.toLowerCase() && att.pertemuan === sessionId
+    );
+
+    if (isDuplicate) {
+      showToast(`Sudah Scan Presensi: ${checkName} sudah melakukan presensi di ${sessionId}!`);
+      playSoundEffect('error');
+      return;
+    }
+
     if (!matchingMember) {
       showToast(`Perhatian: "${scannedName}" tidak ditemukan di database anggota.`);
     }
@@ -863,7 +879,7 @@ export default function App() {
 
     const attendanceRecord: Attendance = {
       timestamp: today.toLocaleString('id-ID'),
-      nama: matchingMember?.nama || scannedName, // Save original name if not found in db
+      nama: checkName, // Save original name if not found in db
       tanggal: dateString,
       pertemuan: sessionId,
       status: 'Hadir',
@@ -888,6 +904,17 @@ export default function App() {
 
   // Manual Check-in helper
   const handleManualCheckIn = async (memberName: string, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa') => {
+    // Check if duplicate for the same session (pertemuan)
+    const isDuplicate = state.attendance.some(
+      att => att.nama.toLowerCase() === memberName.toLowerCase() && att.pertemuan === sessionId
+    );
+
+    if (isDuplicate) {
+      showToast(`Sudah Scan Presensi: ${memberName} sudah melakukan presensi di ${sessionId}!`);
+      playSoundEffect('error');
+      return;
+    }
+
     const today = new Date();
     const dateString = today.toLocaleDateString('id-ID', {
       year: 'numeric',
@@ -922,14 +949,20 @@ export default function App() {
   // Returns: Map of Member Name -> { Hadir: x, Izin: y, Sakit: z, Alpa: w, Percent: p }
   const individualRecap = useMemo(() => {
     const recapMap = new Map<string, { Hadir: number, Izin: number, Sakit: number, Alpa: number }>();
+    const excludedNames = ['ahmad fauzan', 'budi santoso', 'candra wijaya'];
+    const isExcluded = (name: string) => excludedNames.includes(name.trim().toLowerCase());
 
     // Prepare every registered member so that even those with 0 attendance show up
     state.members.forEach(member => {
-      recapMap.set(member.nama, { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 });
+      if (!isExcluded(member.nama)) {
+        recapMap.set(member.nama, { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 });
+      }
     });
 
     // Process attendance list based on selected filters
     state.attendance.forEach(att => {
+      if (isExcluded(att.nama)) return;
+
       // Apply filters: Meeting Name
       if (filterMeeting !== 'Semua' && att.pertemuan !== filterMeeting) return;
       
@@ -1018,8 +1051,11 @@ export default function App() {
   const attendanceTrendData = useMemo(() => {
     // Group attendance by Session / Meeting Name
     const groupMap: any = {};
+    const excludedNames = ['ahmad fauzan', 'budi santoso', 'candra wijaya'];
+    const isExcluded = (name: string) => excludedNames.includes(name.trim().toLowerCase());
     
     state.attendance.forEach(att => {
+      if (isExcluded(att.nama)) return;
       if (!groupMap[att.pertemuan]) {
         groupMap[att.pertemuan] = { meeting: att.pertemuan, Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 };
       }
@@ -1146,7 +1182,7 @@ export default function App() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-md font-bold text-blue-900 tracking-tight leading-none">HALAQAH 5.0</h1>
+              <h1 className="text-md font-bold text-blue-900 tracking-tight leading-none">Admin HALAQAH 5.0</h1>
               <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
             </div>
             <p className="text-[10px] uppercase font-bold tracking-widest text-blue-900 mt-1">Admin Portal</p>
