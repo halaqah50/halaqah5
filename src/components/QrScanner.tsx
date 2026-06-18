@@ -20,6 +20,12 @@ export default function QrScanner({
   const lastScannedText = useRef<string | null>(null);
   const lastScannedTime = useRef<number>(0);
 
+  // Keep onScanSuccess fresh inside the scanner loop without restarting the camera
+  const onScanSuccessRef = useRef(onScanSuccess);
+  useEffect(() => {
+    onScanSuccessRef.current = onScanSuccess;
+  });
+
   // Success beep sound
   const playSuccessBeep = () => {
     try {
@@ -90,7 +96,7 @@ export default function QrScanner({
               setSuccessMessage(`Berhasil menscan: "${decodedText}"`);
             }
 
-            onScanSuccess(decodedText);
+            onScanSuccessRef.current(decodedText);
 
             setTimeout(() => {
               if (isMounted) {

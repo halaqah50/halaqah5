@@ -22,7 +22,8 @@ import {
   FileCheck2,
   Lock,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Trash2
 } from 'lucide-react';
 
 import { Member, Attendance, Pembina, AttendancePembina, AppState } from './types';
@@ -379,6 +380,8 @@ export default function App() {
   const [sessionPembina, setSessionPembina] = useState('');
   const [manualSearchText, setManualSearchText] = useState('');
   const [manualStatus, setManualStatus] = useState<'Hadir' | 'Izin' | 'Sakit' | 'Alpa'>('Hadir');
+  const [scanLogSearch, setScanLogSearch] = useState('');
+  const [scanLogMeetingFilter, setScanLogMeetingFilter] = useState('Semua');
 
   // Attendance Pembina Form
   const [pembinaAttendanceForm, setPembinaAttendanceForm] = useState<{
@@ -857,7 +860,8 @@ export default function App() {
 
     // Check if duplicate for the same session (pertemuan)
     const isDuplicate = state.attendance.some(
-      att => att.nama.toLowerCase() === checkName.toLowerCase() && att.pertemuan === sessionId
+      att => att.nama.trim().toLowerCase() === checkName.trim().toLowerCase() && 
+             att.pertemuan.trim().toLowerCase() === sessionId.trim().toLowerCase()
     );
 
     if (isDuplicate) {
@@ -906,7 +910,8 @@ export default function App() {
   const handleManualCheckIn = async (memberName: string, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa') => {
     // Check if duplicate for the same session (pertemuan)
     const isDuplicate = state.attendance.some(
-      att => att.nama.toLowerCase() === memberName.toLowerCase() && att.pertemuan === sessionId
+      att => att.nama.trim().toLowerCase() === memberName.trim().toLowerCase() && 
+             att.pertemuan.trim().toLowerCase() === sessionId.trim().toLowerCase()
     );
 
     if (isDuplicate) {
@@ -944,6 +949,27 @@ export default function App() {
       alert(`Gagal mencatat presensi: ${e.message}`);
     }
   };
+
+  // Delete a recorded member attendance manually (local state only)
+  const handleDeleteAttendance = (timestamp: string, nama: string) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus presensi real-time atas nama "${nama}"?`)) {
+      setState(s => ({
+        ...s,
+        attendance: s.attendance.filter(att => !(att.timestamp === timestamp && att.nama === nama))
+      }));
+      showToast(`Presensi "${nama}" berhasil dihapus secara lokal.`);
+      playSoundEffect('click');
+    }
+  };
+
+  // Compute filtered logs for scanner view
+  const filteredScanLogs = useMemo(() => {
+    return state.attendance.filter(att => {
+      const matchMeeting = scanLogMeetingFilter === 'Semua' || att.pertemuan.trim().toLowerCase() === scanLogMeetingFilter.trim().toLowerCase();
+      const matchSearch = att.nama.toLowerCase().includes(scanLogSearch.toLowerCase());
+      return matchMeeting && matchSearch;
+    });
+  }, [state.attendance, scanLogMeetingFilter, scanLogSearch]);
 
   // REKAPITULASI DYNAMIC ENGINE WITH FILTER COUPLING
   // Returns: Map of Member Name -> { Hadir: x, Izin: y, Sakit: z, Alpa: w, Percent: p }
@@ -1697,7 +1723,119 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Real-time Presence Scan Log Table Card */}
+                  <div className="glass-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col gap-4">
+                    <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div>
+                        <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Log Presensi Real-Time</h3>
+                        <p className="text-[10px] text-slate-500 font-semibold mt-1">Daftar rekaman presensi harian yang terintegrasi secara real-time.</p>
+                      </div>
 
+                      {/* Display filters inline */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Search Input */}
+                        <div className="relative w-full md:w-44">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none">
+                            <Search className="w-3.5 h-3.5 text-slate-400" />
+                          </span>
+                          <input
+                            type="text"
+                            placeholder="Cari Nama..."
+                            value={scanLogSearch}
+                            onChange={(e) => setScanLogSearch(e.target.value)}
+                            className="pl-8 pr-3 py-1.5 w-full bg-white border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900"
+                          />
+                        </div>
+
+                        {/* Meeting Filter select */}
+                        <div className="w-full md:w-36">
+                          <select
+                            value={scanLogMeetingFilter}
+                            onChange={(e) => setScanLogMeetingFilter(e.target.value)}
+                            className="px-2 py-1.5 w-full bg-white border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-800 focus:outline-none focus:border-blue-900 cursor-pointer"
+                          >
+                            <option value="Semua">Semua Pertemuan</option>
+                            <option value="Pertemuan 1">Pertemuan 1</option>
+                            <option value="Pertemuan 2">Pertemuan 2</option>
+                            <option value="Pertemuan 3">Pertemuan 3</option>
+                            <option value="Pertemuan 4">Pertemuan 4</option>
+                            <option value="Pertemuan 5">Pertemuan 5</option>
+                            <option value="Pertemuan 6">Pertemuan 6</option>
+                            <option value="Pertemuan 7">Pertemuan 7</option>
+                            <option value="Pertemuan 8">Pertemuan 8</option>
+                            <option value="Pertemuan 9">Pertemuan 9</option>
+                            <option value="Pertemuan 10">Pertemuan 10</option>
+                            <option value="Pertemuan 11">Pertemuan 11</option>
+                            <option value="Pertemuan 12">Pertemuan 12</option>
+                            <option value="Pertemuan 13">Pertemuan 13</option>
+                            <option value="Pertemuan 14">Pertemuan 14</option>
+                            <option value="Pertemuan 15">Pertemuan 15</option>
+                            <option value="Pertemuan 16">Pertemuan 16</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table element */}
+                    <div className="overflow-x-auto w-full">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                            <th className="py-3 px-4 w-12 text-center">No</th>
+                            <th className="py-3 px-4">Nama Anggota</th>
+                            <th className="py-3 px-4">Pertemuan</th>
+                            <th className="py-3 px-4">Tanggal & Waktu Scan</th>
+                            <th className="py-3 px-4 text-center">Status</th>
+                            <th className="py-3 px-4 text-center">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {filteredScanLogs.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="py-12 text-center text-slate-400 font-semibold">
+                                Belum ada data presensi yang sesuai dengan filter.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredScanLogs.map((log, idx) => (
+                              <tr key={log.timestamp + log.nama + idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-3 px-4 text-center text-slate-400 font-bold">{idx + 1}</td>
+                                <td className="py-3 px-4 font-extrabold text-slate-900">{log.nama}</td>
+                                <td className="py-3 px-4 font-bold text-blue-900 text-[11px]">
+                                  <span className="px-2 py-0.5 bg-blue-50 border border-blue-100 rounded-md">
+                                    {log.pertemuan}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-slate-500 font-semibold">{log.timestamp}</td>
+                                <td className="py-3 px-4 text-center">
+                                  <span className={`inline-block px-2.5 py-0.5 font-extrabold uppercase text-[9px] rounded-md ${
+                                    log.status === 'Hadir' 
+                                      ? 'bg-blue-50 text-blue-900 border border-blue-100' 
+                                      : log.status === 'Izin' 
+                                      ? 'bg-amber-50 text-amber-600 border border-amber-100' 
+                                      : log.status === 'Sakit' 
+                                      ? 'bg-sky-50 text-sky-600 border border-sky-100'
+                                      : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                  }`}>
+                                    {log.status}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <button
+                                    onClick={() => handleDeleteAttendance(log.timestamp, log.nama)}
+                                    className="p-1 px-2 text-rose-500 hover:text-rose-750 hover:bg-rose-55 rounded-lg transition-all duration-200 cursor-pointer"
+                                    title="Hapus Presensi"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
                 </div>
 
