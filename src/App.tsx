@@ -509,7 +509,7 @@ export default function App() {
 
   // Save changes automatically to browser space
   useEffect(() => {
-    if (!state.isLoading && state.spreadsheetId === 'Local Device') {
+    if (!state.isLoading) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           members: state.members,
@@ -521,7 +521,7 @@ export default function App() {
         console.error('Error saving state to localStorage:', e);
       }
     }
-  }, [state.members, state.pembina, state.attendance, state.attendancePembina, state.isLoading, state.spreadsheetId]);
+  }, [state.members, state.pembina, state.attendance, state.attendancePembina, state.isLoading]);
 
   // Dummy login triggers if any code path checks it
   const handleLogin = async () => {
@@ -645,10 +645,10 @@ export default function App() {
       if (json && json.success) {
         setState(s => ({
           ...s,
-          members: json.members && json.members.length > 0 ? json.members : s.members,
-          pembina: json.pembina && json.pembina.length > 0 ? json.pembina : s.pembina,
-          attendance: json.attendance && json.attendance.length > 0 ? json.attendance : s.attendance,
-          attendancePembina: json.attendancePembina && json.attendancePembina.length > 0 ? json.attendancePembina : s.attendancePembina,
+          members: Array.isArray(json.members) ? json.members : s.members,
+          pembina: Array.isArray(json.pembina) ? json.pembina : s.pembina,
+          attendance: Array.isArray(json.attendance) ? json.attendance : s.attendance,
+          attendancePembina: Array.isArray(json.attendancePembina) ? json.attendancePembina : s.attendancePembina,
           spreadsheetId: 'Google Sheet Terhubung',
           error: null
         }));
@@ -959,6 +959,62 @@ export default function App() {
       }));
       showToast(`Presensi "${nama}" berhasil dihapus secara lokal.`);
       playSoundEffect('click');
+    }
+  };
+
+  // Empty all recorded member attendance logs completely
+  const handleClearAllAttendance = async () => {
+    if (window.confirm('Apakah Anda yakin ingin mengosongkan seluruh log presensi real-time? Tindakan ini tidak dapat dibatalkan.')) {
+      // Clear React state and save to local storage immediately
+      setState(s => {
+        const newState = {
+          ...s,
+          attendance: []
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            members: newState.members,
+            pembina: newState.pembina,
+            attendance: newState.attendance,
+            attendancePembina: newState.attendancePembina
+          }));
+        } catch (e) {
+          console.error('Error saving state to localStorage:', e);
+        }
+        return newState;
+      });
+
+      showToast('Seluruh log presensi berhasil dikosongkan.');
+      playSoundEffect('error');
+
+      // Check if Apps Script is active to offer cloud sync
+      if (appsScriptUrl) {
+        const syncSheets = window.confirm('Aplikasi terhubung ke Google Sheet. Apakah Anda juga ingin mengosongkan log presensi di Google Sheet secara otomatis?');
+        if (syncSheets) {
+          setIsRefreshing(true);
+          try {
+            const payload = {
+              members: state.members,
+              pembina: state.pembina,
+              attendance: [], // empty bulk attendance
+              attendancePembina: state.attendancePembina
+            };
+            await fetch(appsScriptUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: {
+                'Content-Type': 'text/plain'
+              },
+              body: JSON.stringify({ action: 'bulkUpload', data: payload })
+            });
+            showToast('Log presensi di Google Sheet berhasil dikosongkan!');
+          } catch (err: any) {
+            alert('Gagal menyinkronkan pengosongan ke Google Sheet: ' + err.message);
+          } finally {
+            setIsRefreshing(false);
+          }
+        }
+      }
     }
   };
 
@@ -1733,6 +1789,16 @@ export default function App() {
 
                       {/* Display filters inline */}
                       <div className="flex flex-wrap items-center gap-2">
+                        {/* Empty Scan Log Button */}
+                        <button
+                          onClick={handleClearAllAttendance}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 rounded-lg text-[11px] font-bold text-rose-600 transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
+                          title="Kosongkan Semua Log Presensi"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Kosongkan Log</span>
+                        </button>
+
                         {/* Search Input */}
                         <div className="relative w-full md:w-44">
                           <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none">
