@@ -68,6 +68,262 @@ const DEFAULT_ATTENDANCE_PEMBINA: AttendancePembina[] = [
   { timestamp: '2026-06-17 07:58:00', nama: 'Ustadz Ahmad Fauzi', tanggal: '17/06/2026', pertemuan: 'Pertemuan 2', status: 'Hadir' },
 ];
 
+const APPS_SCRIPT_TEMPLATE = `// Paste kode ini di "Ekstensi" > "Apps Script" pada Google Sheet Anda.
+// Lalu klik "Terapkan" > "Penerapan Baru", pilih Jenis: "Aplikasi Web",
+// Konfigurasikan: Jalankan sebagai "Saya" dan Siapa yang memiliki akses: "Siapa saja",
+// Kemudian Salin URL Aplikasi Web yang diberikan dan masukkan ke kolom "URL Aplikasi Web" di aplikasi ini.
+
+function doGet(e) {
+  var action = e.parameter.action;
+  var sheet = SpreadsheetApp.getActiveSpreadsheet();
+  
+  if (action === "fetchData") {
+    // 1. Members
+    var membersSheet = sheet.getSheetByName("Members");
+    var members = [];
+    if (membersSheet) {
+      var rows = membersSheet.getDataRange().getValues();
+      if (rows.length > 1) {
+        var header = rows[0];
+        // Check if the first column is a Timestamp header
+        var hasTimestamp = false;
+        if (header && header[0]) {
+          var h0 = header[0].toString().toLowerCase();
+          if (h0.indexOf("time") > -1 || (h0.indexOf("tanggal") > -1 && h0 !== "tanggal bergabung")) {
+            hasTimestamp = true;
+          }
+        }
+        var nameIdx = hasTimestamp ? 1 : 0;
+        var addressIdx = hasTimestamp ? 2 : 1;
+        var waIdx = hasTimestamp ? 3 : 2;
+        var dateIdx = hasTimestamp ? 4 : 3;
+
+        for (var i = 1; i < rows.length; i++) {
+          if (rows[i][nameIdx]) {
+            members.push({
+              nama: rows[i][nameIdx].toString(),
+              alamat: rows[i][addressIdx] ? rows[i][addressIdx].toString() : "",
+              nomorWA: rows[i][waIdx] ? rows[i][waIdx].toString() : "",
+              tanggalBergabung: rows[i][dateIdx] ? rows[i][dateIdx].toString() : ""
+            });
+          }
+        }
+      }
+    }
+    
+    // 2. Attendance
+    var attendanceSheet = sheet.getSheetByName("Attendance");
+    var attendance = [];
+    if (attendanceSheet) {
+      var rows = attendanceSheet.getDataRange().getValues();
+      for (var i = 1; i < rows.length; i++) {
+        if (rows[i][1]) {
+          attendance.push({
+            timestamp: rows[i][0] ? rows[i][0].toString() : "",
+            nama: rows[i][1].toString(),
+            tanggal: rows[i][2] ? rows[i][2].toString() : "",
+            pertemuan: rows[i][3] ? rows[i][3].toString() : "",
+            status: rows[i][4] ? rows[i][4].toString() : "Hadir",
+            pembina: rows[i][5] ? rows[i][5].toString() : ""
+          });
+        }
+      }
+    }
+    
+    // 3. Pembina
+    var pembinaSheet = sheet.getSheetByName("Pembina");
+    var pembina = [];
+    if (pembinaSheet) {
+      var rows = pembinaSheet.getDataRange().getValues();
+      if (rows.length > 1) {
+        var header = rows[0];
+        // Check if the first column is a Timestamp header
+        var hasTimestamp = false;
+        if (header && header[0]) {
+          var h0 = header[0].toString().toLowerCase();
+          if (h0.indexOf("time") > -1 || (h0.indexOf("tanggal") > -1 && h0 !== "tanggal bergabung")) {
+            hasTimestamp = true;
+          }
+        }
+        var nameIdx = hasTimestamp ? 1 : 0;
+        var addressIdx = hasTimestamp ? 2 : 1;
+        var waIdx = hasTimestamp ? 3 : 2;
+        var dateIdx = hasTimestamp ? 4 : 3;
+
+        for (var i = 1; i < rows.length; i++) {
+          if (rows[i][nameIdx]) {
+            pembina.push({
+              nama: rows[i][nameIdx].toString(),
+              alamat: rows[i][addressIdx] ? rows[i][addressIdx].toString() : "",
+              nomorWA: rows[i][waIdx] ? rows[i][waIdx].toString() : "",
+              tanggalBergabung: rows[i][dateIdx] ? rows[i][dateIdx].toString() : ""
+            });
+          }
+        }
+      }
+    }
+    
+    // 4. Attendance Pembina
+    var attPembinaSheet = sheet.getSheetByName("Attendance_Pembina");
+    var attendancePembina = [];
+    if (attPembinaSheet) {
+      var rows = attPembinaSheet.getDataRange().getValues();
+      for (var i = 1; i < rows.length; i++) {
+        if (rows[i][1]) {
+          attendancePembina.push({
+            timestamp: rows[i][0] ? rows[i][0].toString() : "",
+            nama: rows[i][1].toString(),
+            tanggal: rows[i][2] ? rows[i][2].toString() : "",
+            pertemuan: rows[i][3] ? rows[i][3].toString() : "",
+            status: rows[i][4] ? rows[i][4].toString() : "Hadir"
+          });
+        }
+      }
+    }
+    
+    var output = {
+      success: true,
+      members: members,
+      attendance: attendance,
+      pembina: pembina,
+      attendancePembina: attendancePembina
+    };
+    
+    return ContentService.createTextOutput(JSON.stringify(output))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Apps Script Active" }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet();
+  var payload = JSON.parse(e.postData.contents);
+  var action = payload.action;
+  var data = payload.data;
+  
+  if (action === "addMember") {
+    var ws = sheet.getSheetByName("Members");
+    if (!ws) {
+      ws = sheet.insertSheet("Members");
+      ws.appendRow(["Nama", "Alamat", "Nomor WA", "Tanggal Bergabung"]);
+    }
+    var rows = ws.getDataRange().getValues();
+    var header = rows[0] || [];
+    var hasTimestamp = false;
+    if (header && header[0]) {
+      var h0 = header[0].toString().toLowerCase();
+      if (h0.indexOf("time") > -1 || (h0.indexOf("tanggal") > -1 && h0 !== "tanggal bergabung")) {
+        hasTimestamp = true;
+      }
+    }
+    if (hasTimestamp) {
+      ws.appendRow([new Date(), data.nama, data.alamat, data.nomorWA, data.tanggalBergabung]);
+    } else {
+      ws.appendRow([data.nama, data.alamat, data.nomorWA, data.tanggalBergabung]);
+    }
+    
+  } else if (action === "addPembina") {
+    var ws = sheet.getSheetByName("Pembina");
+    if (!ws) {
+      ws = sheet.insertSheet("Pembina");
+      ws.appendRow(["Nama", "Alamat", "Nomor WA", "Tanggal Bergabung"]);
+    }
+    var rows = ws.getDataRange().getValues();
+    var header = rows[0] || [];
+    var hasTimestamp = false;
+    if (header && header[0]) {
+      var h0 = header[0].toString().toLowerCase();
+      if (h0.indexOf("time") > -1 || (h0.indexOf("tanggal") > -1 && h0 !== "tanggal bergabung")) {
+        hasTimestamp = true;
+      }
+    }
+    if (hasTimestamp) {
+      ws.appendRow([new Date(), data.nama, data.alamat, data.nomorWA, data.tanggalBergabung]);
+    } else {
+      ws.appendRow([data.nama, data.alamat, data.nomorWA, data.tanggalBergabung]);
+    }
+    
+  } else if (action === "addAttendance") {
+    var ws = sheet.getSheetByName("Attendance");
+    if (!ws) {
+      ws = sheet.insertSheet("Attendance");
+      ws.appendRow(["Timestamp", "Nama", "Tanggal", "Pertemuan", "Status", "Pembina"]);
+    }
+    ws.appendRow([data.timestamp, data.nama, data.tanggal, data.pertemuan, data.status, data.pembina]);
+    
+  } else if (action === "addAttendancePembina") {
+    var ws = sheet.getSheetByName("Attendance_Pembina");
+    if (!ws) {
+      ws = sheet.insertSheet("Attendance_Pembina");
+      ws.appendRow(["Timestamp", "Nama", "Tanggal", "Pertemuan", "Status"]);
+    }
+    ws.appendRow([data.timestamp, data.nama, data.tanggal, data.pertemuan, data.status]);
+    
+  } else if (action === "bulkUpload") {
+    // 1. Members
+    var wsM = sheet.getSheetByName("Members");
+    if (wsM) {
+      wsM.clear();
+    } else {
+      wsM = sheet.insertSheet("Members");
+    }
+    wsM.appendRow(["Nama", "Alamat", "Nomor WA", "Tanggal Bergabung"]);
+    if (data.members && data.members.length > 0) {
+      data.members.forEach(function(item) {
+        wsM.appendRow([item.nama, item.alamat, item.nomorWA, item.tanggalBergabung]);
+      });
+    }
+    
+    // 2. Pembina
+    var wsP = sheet.getSheetByName("Pembina");
+    if (wsP) {
+      wsP.clear();
+    } else {
+      wsP = sheet.insertSheet("Pembina");
+    }
+    wsP.appendRow(["Nama", "Alamat", "Nomor WA", "Tanggal Bergabung"]);
+    if (data.pembina && data.pembina.length > 0) {
+      data.pembina.forEach(function(item) {
+        wsP.appendRow([item.nama, item.alamat, item.nomorWA, item.tanggalBergabung]);
+      });
+    }
+    
+    // 3. Attendance
+    var wsA = sheet.getSheetByName("Attendance");
+    if (wsA) {
+      wsA.clear();
+    } else {
+      wsA = sheet.insertSheet("Attendance");
+    }
+    wsA.appendRow(["Timestamp", "Nama", "Tanggal", "Pertemuan", "Status", "Pembina"]);
+    if (data.attendance && data.attendance.length > 0) {
+      data.attendance.forEach(function(item) {
+        wsA.appendRow([item.timestamp, item.nama, item.tanggal, item.pertemuan, item.status, item.pembina]);
+      });
+    }
+    
+    // 4. Attendance Pembina
+    var wsAP = sheet.getSheetByName("Attendance_Pembina");
+    if (wsAP) {
+      wsAP.clear();
+    } else {
+      wsAP = sheet.insertSheet("Attendance_Pembina");
+    }
+    wsAP.appendRow(["Timestamp", "Nama", "Tanggal", "Pertemuan", "Status"]);
+    if (data.attendancePembina && data.attendancePembina.length > 0) {
+      data.attendancePembina.forEach(function(item) {
+        wsAP.appendRow([item.timestamp, item.nama, item.tanggal, item.pertemuan, item.status]);
+      });
+    }
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({ success: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+`;
+
 export default function App() {
   // Auth state - Hardcoded to offline secure admin
   const [user, setUser] = useState<any>({
@@ -91,13 +347,16 @@ export default function App() {
   });
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'scan' | 'members' | 'pembina'>('dashboard');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
-  const [activeQrMember, setActiveQrMember] = useState<Member | null>(null);
+  const [activeTab, setActiveTab ] = useState<'dashboard' | 'scan' | 'members' | 'pembina' | 'sheets'>('dashboard');
+  const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => {
+    return localStorage.getItem('halaqah_apps_script_url') || '';
+  });
+  const [isRefreshing, setIsRefreshing ] = useState(false);
+  const [successToast, setSuccessToast ] = useState<string | null>(null);
+  const [activeQrMember, setActiveQrMember ] = useState<Member | null>(null);
 
   // Scanner Active state
-  const [isScannerActive, setIsScannerActive] = useState(false);
+  const [isScannerActive, setIsScannerActive ] = useState(false);
 
   // Form states - Member Baru
   const [newMemberForm, setNewMemberForm] = useState({
@@ -227,6 +486,17 @@ export default function App() {
     setPembinaAttendanceForm(initialPembinaAtt);
   }, []);
 
+  // Initial silent cloud sync on mount
+  useEffect(() => {
+    const savedUrl = localStorage.getItem('halaqah_apps_script_url');
+    if (savedUrl) {
+      const timer = setTimeout(() => {
+        handleSyncFromAppsScript(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [appsScriptUrl]);
+
   // Save changes automatically to browser space
   useEffect(() => {
     if (!state.isLoading && state.spreadsheetId === 'Local Device') {
@@ -332,14 +602,107 @@ export default function App() {
     fileReader.readAsText(files[0]);
   };
 
+  // Send data to Apps Script Web App for real-time sync (100% free, no billing)
+  const sendToAppsScript = async (action: string, data: any) => {
+    if (!appsScriptUrl) return;
+    try {
+      await fetch(appsScriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({ action, data })
+      });
+      console.log(`Successfully posted ${action} to Google Sheet.`);
+    } catch (err) {
+      console.warn(`Apps Script sync failed for ${action}:`, err);
+    }
+  };
+
+  // Sync / pull all data from Google Sheet (100% free, no billing)
+  const handleSyncFromAppsScript = async (silent = false) => {
+    if (!appsScriptUrl) {
+      if (!silent) alert('Silakan masukkan URL Aplikasi Web Google Apps Script Anda terlebih dahulu di tab Google Sheet.');
+      return;
+    }
+    if (!silent) setIsRefreshing(true);
+    try {
+      const res = await fetch(`${appsScriptUrl}?action=fetchData`);
+      if (!res.ok) throw new Error(`HTTP status ${res.status}`);
+      const json = await res.json();
+      
+      if (json && json.success) {
+        setState(s => ({
+          ...s,
+          members: json.members && json.members.length > 0 ? json.members : s.members,
+          pembina: json.pembina && json.pembina.length > 0 ? json.pembina : s.pembina,
+          attendance: json.attendance && json.attendance.length > 0 ? json.attendance : s.attendance,
+          attendancePembina: json.attendancePembina && json.attendancePembina.length > 0 ? json.attendancePembina : s.attendancePembina,
+          spreadsheetId: 'Google Sheet (Gratis)',
+          error: null
+        }));
+        if (!silent) showToast('Sinkronisasi sukses! Data terbaru berhasil ditarik dari Google Sheets.');
+      } else {
+        throw new Error(json.error || 'Server Apps Script mengembalikan status gagal.');
+      }
+    } catch (err: any) {
+      console.error('Error fetching from Apps Script:', err);
+      if (!silent) {
+        alert(`Sinkronisasi Gagal: ${err.message}. Pastikan URL Aplikasi Web Anda benar, dan pilihlah hak akses "Anyone/Siapa Saja".`);
+      }
+    } finally {
+      if (!silent) setIsRefreshing(false);
+    }
+  };
+
+  // Bulk Upload local database to Google Sheet (100% free, no billing)
+  const handleBulkUploadToAppsScript = async () => {
+    if (!appsScriptUrl) {
+      alert('Silakan masukkan URL Aplikasi Web Google Apps Script Anda terlebih dahulu.');
+      return;
+    }
+    const confirm = window.confirm('Apakah Anda yakin ingin mengunggah SELURUH database lokal saat ini ke Google Sheet? Data lama di sheet akan diganti dengan data lokal.');
+    if (!confirm) return;
+
+    setIsRefreshing(true);
+    try {
+      const payload = {
+        members: state.members,
+        pembina: state.pembina,
+        attendance: state.attendance,
+        attendancePembina: state.attendancePembina
+      };
+
+      await fetch(appsScriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({ action: 'bulkUpload', data: payload })
+      });
+
+      showToast('Seluruh database berhasil diupload ke Google Sheet Anda!');
+    } catch (err: any) {
+      alert('Gagal mengupload data: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Snippet simulation sync
   const handleRefresh = async () => {
-    setIsRefreshing(true);
     playSoundEffect('click');
-    setTimeout(() => {
-      setIsRefreshing(false);
-      showToast('Sinkronisasi selesai! Semua data tersimpan aman di web browser Anda.');
-    }, 400);
+    if (appsScriptUrl) {
+      await handleSyncFromAppsScript();
+    } else {
+      setIsRefreshing(true);
+      setTimeout(() => {
+        setIsRefreshing(false);
+        showToast('Sinkronisasi luring selesai! Data tersimpan aman di browser Anda.');
+      }, 400);
+    }
   };
 
   // Add Member
@@ -374,6 +737,7 @@ export default function App() {
       setNewMemberForm({ nama: '', alamat: '', nomorWA: '' });
       playSoundEffect('success');
       showToast(`Anggota "${memberObj.nama}" berhasil ditambahkan!`);
+      sendToAppsScript('addMember', memberObj);
     } catch (err: any) {
       alert(`Gagal menambah anggota: ${err.message}`);
     } finally {
@@ -419,6 +783,7 @@ export default function App() {
       setNewPembinaForm({ nama: '', alamat: '', nomorWA: '' });
       playSoundEffect('success');
       showToast(`Pembina "${pembinaObj.nama}" berhasil didaftarkan!`);
+      sendToAppsScript('addPembina', pembinaObj);
     } catch (err: any) {
       alert(`Gagal menambah pembina: ${err.message}`);
     } finally {
@@ -466,6 +831,7 @@ export default function App() {
 
       playSoundEffect('success');
       showToast(`Kehadiran Pembina untuk "${pembinaSessionId}" berhasil disimpan!`);
+      newRecords.forEach(rec => sendToAppsScript('addAttendancePembina', rec));
     } catch (err: any) {
       alert(`Gagal merekam presensi pembina: ${err.message}`);
     } finally {
@@ -509,6 +875,7 @@ export default function App() {
 
       showToast(`Check-In Berhasil: ${attendanceRecord.nama} hadir di ${sessionId}!`);
       playSoundEffect('success');
+      sendToAppsScript('addAttendance', attendanceRecord);
     } catch (err: any) {
       console.error('Error recording attendance:', err);
       alert(`Gagal menyimpan presensi scan: ${err.message}`);
@@ -541,6 +908,7 @@ export default function App() {
 
       showToast(`Pencatatan Sukses: ${memberName} (${status}) di ${sessionId}!`);
       playSoundEffect('success');
+      sendToAppsScript('addAttendance', attendanceRecord);
     } catch (e: any) {
       alert(`Gagal mencatat presensi: ${e.message}`);
     }
@@ -919,6 +1287,17 @@ export default function App() {
             >
               Pembina ({state.pembina.length})
             </button>
+            <button
+              onClick={() => { setActiveTab('sheets'); playSoundEffect('click'); }}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-250 flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'sheets' 
+                  ? 'bg-emerald-700 text-white font-extrabold shadow-sm' 
+                  : 'text-emerald-750 hover:bg-emerald-50/50'
+              }`}
+            >
+              <div className={`w-1.5 h-1.5 rounded-full ${appsScriptUrl ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'}`} />
+              <span>Google Sheets Sync</span>
+            </button>
           </nav>
 
           {/* TAB CONTENTS CONTAINER */}
@@ -986,8 +1365,8 @@ export default function App() {
                         className="w-full glass-select rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-900 font-medium cursor-pointer border border-slate-200 text-slate-800 bg-white"
                       >
                         <option value="Semua" className="bg-white text-slate-900">Semua Pembina</option>
-                        {state.pembina.map(p => (
-                          <option key={p.nama} value={p.nama} className="bg-white text-slate-900">{p.nama}</option>
+                        {state.pembina.map((p, pIdx) => (
+                          <option key={p.nama + '-' + pIdx} value={p.nama} className="bg-white text-slate-900">{p.nama}</option>
                         ))}
                       </select>
                     </div>
@@ -1143,7 +1522,7 @@ export default function App() {
                           </tr>
                         ) : (
                           individualRecap.map((recap, idx) => (
-                            <tr key={recap.nama} className="hover:bg-slate-50 transition-colors print:hover:bg-transparent">
+                            <tr key={recap.nama + '-' + idx} className="hover:bg-slate-50 transition-colors print:hover:bg-transparent">
                               <td className="py-3.5 px-4 text-center text-slate-450 font-bold print:text-neutral-500">{idx + 1}</td>
                               <td className="py-3.5 px-4">
                                 <span className="font-extrabold text-slate-900 print:text-slate-950">{recap.nama}</span>
@@ -1262,8 +1641,8 @@ export default function App() {
                           className="w-full glass-select rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-900 font-semibold cursor-pointer border border-slate-200 text-slate-800 bg-white"
                         >
                           <option value="" className="bg-white text-slate-900">-- Pilih Anggota --</option>
-                          {state.members.map(m => (
-                            <option key={m.nama} value={m.nama} className="bg-white text-slate-900">{m.nama}</option>
+                          {state.members.map((m, mIdx) => (
+                            <option key={m.nama + '-' + mIdx} value={m.nama} className="bg-white text-slate-900">{m.nama}</option>
                           ))}
                         </select>
                       </div>
@@ -1642,8 +2021,8 @@ export default function App() {
 
                       {/* Checklist grid list */}
                       <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white">
-                        {state.pembina.map((p) => (
-                          <div key={p.nama} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 text-xs hover:bg-slate-50 transition-colors">
+                        {state.pembina.map((p, pIdx) => (
+                          <div key={p.nama + '-' + pIdx} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 text-xs hover:bg-slate-50 transition-colors">
                             <span className="font-extrabold text-slate-900">{p.nama}</span>
                             
                             {/* Attendance values selectors radio group or buttons */}
@@ -1743,6 +2122,199 @@ export default function App() {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* ----------------- TAB: GOOGLE SHEETS SYNC ----------------- */}
+            {activeTab === 'sheets' && (
+              <div className="flex flex-col gap-8 animate-fade-in select-text">
+                
+                {/* 1. Connection Status Banner */}
+                <div className={`p-6 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xs ${
+                  appsScriptUrl 
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-950' 
+                    : 'bg-amber-50 border-amber-200 text-amber-950'
+                }`}>
+                  <div className="flex gap-4 items-start">
+                    <div className={`p-3 rounded-xl ${appsScriptUrl ? 'bg-emerald-600' : 'bg-amber-600'} text-white shadow-sm`}>
+                      <FileCheck2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm">
+                        {appsScriptUrl ? 'Koneksi Cloud Google Sheets Aktif' : 'Penyimpanan Lokal - Google Sheets Belum Terhubung'}
+                      </h3>
+                      <p className="text-xs opacity-90 leading-relaxed mt-1 font-semibold">
+                        {appsScriptUrl 
+                          ? 'Setiap penambahan Anggota, Pembina, dan Presensi akan terkirim secara otomatis (real-time) ke Google Sheet Anda tanpa biaya billing.' 
+                          : 'Saat ini aplikasi berjalan luring di browser Anda. Anda bisa mengaktifkan integrasi Google Sheet secara gratis menggunakan modul Apps Script di bawah.'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 w-full md:w-auto">
+                    {appsScriptUrl && (
+                      <button
+                        onClick={() => handleSyncFromAppsScript()}
+                        disabled={isRefreshing}
+                        className="flex-1 md:flex-none px-4 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        <span>Tarik Data Sheet</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Configuration Form */}
+                <div className="glass-card bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-6">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800 tracking-wider uppercase">Konfigurasi Jembatan Apps Script (100% Gratis & Tanpa Billing)</h3>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-1">Masukkan URL Aplikasi Web Google Apps Script hasil penyebaran (deploy) untuk memulai integrasi.</p>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">URL Aplikasi Web Google Apps Script</label>
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <input
+                        type="url"
+                        placeholder="https://script.google.com/macros/s/.../exec"
+                        value={appsScriptUrl}
+                        onChange={(e) => {
+                          const url = e.target.value.trim();
+                          setAppsScriptUrl(url);
+                          localStorage.setItem('halaqah_apps_script_url', url);
+                        }}
+                        className="flex-1 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-900 rounded-xl px-4 py-3 text-xs focus:outline-none font-semibold text-slate-800 placeholder:text-slate-400"
+                      />
+                      {appsScriptUrl && (
+                        <button
+                          onClick={() => {
+                            setAppsScriptUrl('');
+                            localStorage.removeItem('halaqah_apps_script_url');
+                            showToast('Koneksi Google Sheet dinonaktifkan.');
+                          }}
+                          className="px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer animate-fade-in"
+                        >
+                          Putuskan Koneksi
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions Row */}
+                  <div className="flex flex-wrap gap-3 p-4 bg-slate-50 border border-slate-200/60 rounded-xl">
+                    <div className="flex-1 min-w-[250px]">
+                      <h4 className="font-bold text-xs text-slate-805">Unggah Database Lokal ke Sheet</h4>
+                      <p className="text-[10px] text-slate-500 font-semibold leading-relaxed mt-0.5">
+                        Jika sheet Anda kosong atau Anda baru memasang script baru, klik tombol ini untuk menyalin semua data lokal di browser ini ke dalam Google Sheet.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleBulkUploadToAppsScript}
+                      disabled={isRefreshing || !appsScriptUrl}
+                      className="px-5 py-2.5 bg-blue-900 hover:bg-blue-950 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer self-center"
+                    >
+                      Unggah Semua Data Lokal
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Steps and Copier Section */}
+                <div className="glass-card bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-6">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800 tracking-wider uppercase">Panduan Pemasangan Google Apps Script (5 Menit Selesai)</h3>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-1">Ikuti langkah-langkah mudah berikut untuk mengintegrasikan Google Spreadsheet Anda secara gratis:</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-700 font-medium leading-relaxed">
+                    <div className="flex flex-col gap-4">
+                      {/* Step 1 */}
+                      <div className="flex gap-3">
+                        <div className="w-5 h-5 rounded-full bg-blue-900 text-white font-extrabold flex items-center justify-center shrink-0">1</div>
+                        <div>
+                          <p className="font-bold text-slate-800">Buka Spreadsheet Target Anda</p>
+                          <p className="text-slate-500 font-semibold leading-relaxed mt-0.5">
+                            Buka link Spreadsheet Anda: <a href="https://docs.google.com/spreadsheets/d/1kfj5Y_UfcrmNZ-eArHQkGyw1bzDPvRSrm1RC3nxohQA/edit?usp=sharing" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">1kfj5Y...nxohQA</a>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Step 2 */}
+                      <div className="flex gap-3">
+                        <div className="w-5 h-5 rounded-full bg-blue-900 text-white font-extrabold flex items-center justify-center shrink-0">2</div>
+                        <div>
+                          <p className="font-bold text-slate-800">Masuk ke Menu Apps Script</p>
+                          <p className="text-slate-500 font-semibold leading-relaxed mt-0.5">
+                            Pilih menu <strong className="text-slate-800">Ekstensi (Extensions)</strong> &gt; <strong className="text-slate-800">Apps Script</strong> di bagian atas layar Google Sheet Anda.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Step 3 */}
+                      <div className="flex gap-3">
+                        <div className="w-5 h-5 rounded-full bg-blue-900 text-white font-extrabold flex items-center justify-center shrink-0">3</div>
+                        <div>
+                          <p className="font-bold text-slate-805">Tempelkan Kode Apps Script</p>
+                          <p className="text-slate-500 font-semibold leading-relaxed mt-0.5">
+                            Hapus semua kode bawaan di editor Apps Script, lalu salin dan tempelkan seluruh kode yang ada di kotak sebelah kanan di bawah ini.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                      {/* Step 4 */}
+                      <div className="flex gap-3">
+                        <div className="w-5 h-5 rounded-full bg-blue-900 text-white font-extrabold flex items-center justify-center shrink-0">4</div>
+                        <div>
+                          <p className="font-bold text-slate-850">Terapkan Aplikasi Web (Deploy)</p>
+                          <p className="text-slate-500 font-semibold leading-relaxed mt-0.5 text-justify">
+                            Klik tombol biru <strong className="text-slate-800">Terapkan (Deploy)</strong> &gt; <strong className="text-slate-800">Penerapan Baru (New deployment)</strong> di bagian atas editor.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Step 5 */}
+                      <div className="flex gap-3">
+                        <div className="w-5 h-5 rounded-full bg-blue-900 text-white font-extrabold flex items-center justify-center shrink-0">5</div>
+                        <div>
+                          <p className="font-bold text-slate-850">Atur Hak Akses Ke "Siapa Saja"</p>
+                          <p className="text-slate-500 font-semibold leading-relaxed mt-0.5 text-justify">
+                            Pilih jenis: <strong className="text-slate-800">Aplikasi Web (Web App)</strong>.<br />
+                            Jalankan sebagai: <strong className="text-slate-800">Saya sendiri (Me)</strong>.<br />
+                            Siapa yang memiliki akses: <strong className="text-slate-800">Siapa saja (Anyone)</strong>.<br />
+                            Klik <strong className="text-slate-800">Terapkan</strong>, berikan izin Google (Authorize), lalu salin URL Aplikasi Web yang dihasilkan dan tempelkan di kotak isian di atas!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Copy code container */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-800 uppercase tracking-wide">
+                      <span>Kode Apps Script (Copy Paste Ke Google Sheet)</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(APPS_SCRIPT_TEMPLATE);
+                          showToast('Kode berhasil disalin ke clipboard!');
+                        }}
+                        className="px-3 py-1 bg-emerald-700 border border-emerald-800 text-white rounded-lg hover:bg-emerald-800 transition-colors pointer-events-auto cursor-pointer flex items-center gap-1 font-bold text-[10px]"
+                      >
+                        <FileCheck2 className="w-3" />
+                        <span>Salin Kode</span>
+                      </button>
+                    </div>
+
+                    <textarea
+                      readOnly
+                      rows={12}
+                      className="w-full bg-slate-900 border border-slate-950 text-slate-100 font-mono text-[10px] p-4 rounded-xl leading-relaxed focus:outline-none focus:ring-0"
+                      value={APPS_SCRIPT_TEMPLATE}
+                    />
                   </div>
                 </div>
 
