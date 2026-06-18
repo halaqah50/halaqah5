@@ -861,7 +861,7 @@ export default function App() {
     );
 
     if (isDuplicate) {
-      showToast(`Sudah Scan Presensi: ${checkName} sudah melakukan presensi di ${sessionId}!`);
+      showToast(`Atas Nama ${checkName} Sudah Scan Presensi`);
       playSoundEffect('error');
       return;
     }
@@ -910,7 +910,7 @@ export default function App() {
     );
 
     if (isDuplicate) {
-      showToast(`Sudah Scan Presensi: ${memberName} sudah melakukan presensi di ${sessionId}!`);
+      showToast(`Atas Nama ${memberName} Sudah Scan Presensi`);
       playSoundEffect('error');
       return;
     }
