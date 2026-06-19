@@ -179,19 +179,25 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
 
       // Drawer Metadata Fields
       ctx.textAlign = 'left';
-      ctx.font = 'bold 13px system-ui, sans-serif';
+      
+      const labelX = 45;
+      const colonX = 135;
+      const valueX = 150;
 
       // Nomor ID Row
       ctx.fillStyle = '#64748b';
-      ctx.fillText('Nomor ID:', 45, 485);
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.fillText('No. ID', labelX, 485);
+      ctx.fillText(':', colonX, 485);
       ctx.fillStyle = '#1e293b';
       ctx.font = '600 13px system-ui, sans-serif';
-      ctx.fillText(member.nomorWA, 155, 485);
+      ctx.fillText(member.nomorWA, valueX, 485);
 
       // Alamat Row
       ctx.fillStyle = '#64748b';
       ctx.font = 'bold 13px system-ui, sans-serif';
-      ctx.fillText('Alamat:', 45, 520);
+      ctx.fillText('Alamat', labelX, 520);
+      ctx.fillText(':', colonX, 520);
       ctx.fillStyle = '#1e293b';
       ctx.font = '600 13px system-ui, sans-serif';
       
@@ -200,20 +206,21 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
       if (addr.length > 32) {
         const line1 = addr.substring(0, 32);
         const line2 = addr.substring(32);
-        ctx.fillText(line1, 155, 520);
-        ctx.fillText(line2, 155, 538);
+        ctx.fillText(line1, valueX, 520);
+        ctx.fillText(line2, valueX, 538);
       } else {
-        ctx.fillText(addr, 155, 520);
+        ctx.fillText(addr, valueX, 520);
       }
 
       // Tgl Daftar Row
       const dateY = addr.length > 32 ? 570 : 555;
       ctx.fillStyle = '#64748b';
       ctx.font = 'bold 13px system-ui, sans-serif';
-      ctx.fillText('Tgl Daftar:', 45, dateY);
+      ctx.fillText('Tgl Daftar', labelX, dateY);
+      ctx.fillText(':', colonX, dateY);
       ctx.fillStyle = '#1e293b';
       ctx.font = '600 13px system-ui, sans-serif';
-      ctx.fillText(formattedDate, 155, dateY);
+      ctx.fillText(formattedDate, valueX, dateY);
 
       // Footer
       ctx.textAlign = 'center';
@@ -287,19 +294,20 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
 
               {/* Details */}
               <div className="w-full space-y-1.5 mt-1 border-t border-slate-100 pt-3 text-[11px] text-slate-600 text-left">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="w-3.5 h-3.5 text-blue-900" />
-                  <span className="font-bold text-slate-500 w-24 shrink-0">Nomor ID:</span>
+                <div className="grid grid-cols-[14px_75px_10px_1fr] items-start gap-y-2.5 text-[11px] text-slate-600">
+                  <div className="pt-0.5"><Smartphone className="w-3.5 h-3.5 text-blue-900" /></div>
+                  <span className="font-bold text-slate-500">No. ID</span>
+                  <span className="font-bold text-slate-500 text-center">:</span>
                   <span className="text-slate-800 font-semibold truncate">{member.nomorWA}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-blue-900" />
-                  <span className="font-bold text-slate-500 w-24 shrink-0">Alamat:</span>
-                  <span className="text-slate-800 font-semibold truncate">{limitedAlamat}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-blue-900" />
-                  <span className="font-bold text-slate-500 w-24 shrink-0">Tgl Daftar:</span>
+
+                  <div className="pt-0.5"><MapPin className="w-3.5 h-3.5 text-blue-900" /></div>
+                  <span className="font-bold text-slate-500">Alamat</span>
+                  <span className="font-bold text-slate-500 text-center">:</span>
+                  <span className="text-slate-800 font-semibold break-words leading-normal max-h-[3.5em] overflow-hidden">{limitedAlamat}</span>
+
+                  <div className="pt-0.5"><Calendar className="w-3.5 h-3.5 text-blue-900" /></div>
+                  <span className="font-bold text-slate-500">Tgl Daftar</span>
+                  <span className="font-bold text-slate-500 text-center">:</span>
                   <span className="text-slate-800 font-semibold">{formattedDate}</span>
                 </div>
               </div>
