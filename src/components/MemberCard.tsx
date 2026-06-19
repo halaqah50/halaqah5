@@ -1,5 +1,6 @@
 import { Member } from '../types';
-import { QrCode, Smartphone, MapPin, Calendar, Printer, X } from 'lucide-react';
+import { QrCode, Smartphone, MapPin, Calendar, Download, X } from 'lucide-react';
+import { useState } from 'react';
 
 interface MemberCardProps {
   member: Member;
@@ -67,9 +68,9 @@ function formatToDdMmYyyy(dateStr: string): string {
 }
 
 export default function MemberCard({ member, onClose }: MemberCardProps) {
-  // Address is limited to 25 characters
+  // Address is limited to 60 characters
   const rawAlamat = member.alamat || '';
-  const limitedAlamat = rawAlamat.substring(0, 25);
+  const limitedAlamat = rawAlamat.substring(0, 60);
   
   // Date is formatted strictly to dd-mm-yyyy without time
   const formattedDate = formatToDdMmYyyy(member.tanggalBergabung);
@@ -77,189 +78,169 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
   // We use QR Server API to generate high-fidelity vectors
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(member.nama)}&color=0f172a&margin=10`;
 
-  const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Gagal membuka jendela cetak. Pastikan pop-up blocker dimatikan.');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadImage = () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      alert('Gagal mendownload kartu (Canvas tidak didukung browser ini).');
+      setIsDownloading(false);
       return;
     }
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Kartu Anggota - ${member.nama}</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;750&display=swap');
-            body {
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 100vh;
-              background-color: #f8fafc;
-              margin: 0;
-            }
-            .card {
-              width: 320px;
-              height: 480px;
-              background: #ffffff;
-              border-radius: 20px;
-              box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-              border: 1px solid #e2e8f0;
-              overflow: hidden;
-              position: relative;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              text-align: center;
-              box-sizing: border-box;
-            }
-            .card-header {
-              width: 100%;
-              background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-              padding: 24px 16px;
-              color: white;
-              box-sizing: border-box;
-            }
-            .card-title {
-              font-size: 18px;
-              font-weight: 700;
-              letter-spacing: 1.5px;
-              margin: 0;
-              color: #ffffff;
-            }
-            .card-subtitle {
-              font-size: 11px;
-              color: #cbd5e1;
-              margin-top: 4px;
-              font-weight: 500;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            .card-body {
-              flex: 1;
-              padding: 20px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: space-between;
-              width: 100%;
-              box-sizing: border-box;
-            }
-            .member-name {
-              font-size: 20px;
-              font-weight: 700;
-              color: #0f172a;
-              margin: 8px 0 2px 0;
-            }
-            .member-status {
-              font-size: 11px;
-              font-weight: 600;
-              background-color: #eff6ff;
-              color: #1e3a8a;
-              padding: 4px 12px;
-              border-radius: 12px;
-              text-transform: uppercase;
-            }
-            .qr-wrapper {
-              margin: 15px 0;
-              padding: 10px;
-              border: 1px dashed #cbd5e1;
-              border-radius: 16px;
-              background-color: #f8fafc;
-            }
-            .qr-code {
-              width: 150px;
-              height: 150px;
-              display: block;
-            }
-            .meta-info {
-              width: 100%;
-              text-align: left;
-              border-top: 1px solid #f1f5f9;
-              padding-top: 12px;
-              font-size: 11px;
-              color: #475569;
-              display: flex;
-              flex-direction: column;
-              gap: 4px;
-            }
-            .meta-row {
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            }
-            .meta-tag {
-              font-weight: bold;
-              color: #64748b;
-              width: 100px;
-            }
-            .card-footer {
-              background-color: #f8fafc;
-              width: 100%;
-              padding: 10px;
-              font-size: 9px;
-              color: #94a3b8;
-              border-top: 1px solid #f1f5f9;
-              box-sizing: border-box;
-            }
-            @media print {
-              body {
-                background: none;
-              }
-              .card {
-                box-shadow: none;
-                border: 1px solid #000;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">HALAQAH 5.0</div>
-              <div class="card-subtitle">Islamic Student Fellowship</div>
-            </div>
-            <div class="card-body">
-              <div>
-                <div class="member-status">ANGGOTA AKTIF</div>
-                <div class="member-name">${member.nama}</div>
-              </div>
-              
-              <div class="qr-wrapper">
-                <img class="qr-code" src="${qrCodeUrl}" alt="QR Code" />
-              </div>
-              
-              <div class="meta-info">
-                <div class="meta-row">
-                  <span class="meta-tag">WA:</span>
-                  <span>${member.nomorWA}</span>
-                </div>
-                <div class="meta-row">
-                  <span class="meta-tag">Alamat:</span>
-                  <span>${limitedAlamat}</span>
-                </div>
-                <div class="meta-row">
-                  <span class="meta-tag">Tgl Daftar:</span>
-                  <span>${formattedDate}</span>
-                </div>
-              </div>
-            </div>
-            <div class="card-footer">
-              Scan kartu ini setiap halaqah untuk daftar hadir otomatis.
-            </div>
-          </div>
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 400);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    // High resolution card layout: 450px * 680px
+    const width = 450;
+    const height = 680;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Draw background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    // Draw border
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(3, 3, width - 6, height - 6);
+
+    // Draw header banner
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(6, 6, width - 12, 110);
+
+    // Draw banner text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('ID Card HALAQAH 5.0', width / 2, 61);
+
+    // Reset alignment
+    ctx.textBaseline = 'alphabetic';
+
+    // Draw status badge
+    const badgeW = 150;
+    const badgeH = 26;
+    const badgeX = (width - badgeW) / 2;
+    const badgeY = 140;
+    ctx.fillStyle = '#eff6ff';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 13);
+    } else {
+      ctx.rect(badgeX, badgeY, badgeW, badgeH);
+    }
+    ctx.fill();
+    ctx.strokeStyle = '#dbeafe';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Badge text
+    ctx.fillStyle = '#1e3a8a';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillText('ANGGOTA AKTIF', width / 2, badgeY + 17);
+
+    // Draw Name
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 24px system-ui, sans-serif';
+    ctx.fillText(member.nama, width / 2, 205);
+
+    // Load and draw QR code
+    const qrImg = new Image();
+    qrImg.crossOrigin = 'anonymous';
+    qrImg.src = qrCodeUrl;
+    qrImg.onload = () => {
+      const qrSize = 180;
+      const qrX = (width - qrSize) / 2;
+      const qrY = 230;
+
+      // Draw outline for QR Code
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+
+      // Draw white background for QR
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16);
+
+      // Draw QR Image
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+      // Draw divider
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(35, 450);
+      ctx.lineTo(width - 35, 450);
+      ctx.stroke();
+
+      // Drawer Metadata Fields
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 13px system-ui, sans-serif';
+
+      // No. WA Row
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('No. WA:', 45, 485);
+      ctx.fillStyle = '#1e293b';
+      ctx.font = '600 13px system-ui, sans-serif';
+      ctx.fillText(member.nomorWA, 155, 485);
+
+      // Alamat Row
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.fillText('Alamat:', 45, 520);
+      ctx.fillStyle = '#1e293b';
+      ctx.font = '600 13px system-ui, sans-serif';
+      
+      const addr = limitedAlamat;
+      // Wrap if over 32 characters
+      if (addr.length > 32) {
+        const line1 = addr.substring(0, 32);
+        const line2 = addr.substring(32);
+        ctx.fillText(line1, 155, 520);
+        ctx.fillText(line2, 155, 538);
+      } else {
+        ctx.fillText(addr, 155, 520);
+      }
+
+      // Tgl Daftar Row
+      const dateY = addr.length > 32 ? 570 : 555;
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.fillText('Tgl Daftar:', 45, dateY);
+      ctx.fillStyle = '#1e293b';
+      ctx.font = '600 13px system-ui, sans-serif';
+      ctx.fillText(formattedDate, 155, dateY);
+
+      // Footer
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.fillText('Scan kartu ini untuk pendaftaran hadir real-time', width / 2, height - 35);
+
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `${member.nama}.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (e) {
+        console.error(e);
+        alert('Gagal mendownload gambar secara otomatis. Klik kanan pada gambar QR Code di kartu untuk menyimpannya.');
+      } finally {
+        setIsDownloading(false);
+      }
+    };
+
+    qrImg.onerror = () => {
+      alert('Gagal memuat gambar QR code.');
+      setIsDownloading(false);
+    };
   };
 
   return (
@@ -281,9 +262,8 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
         <div className="p-6 flex flex-col items-center w-full">
           <div className="w-72 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-md flex flex-col items-center select-none">
             {/* Dark Professional Top Banner */}
-            <div className="w-full bg-blue-900 py-4 px-4 text-center border-b border-blue-950">
-              <span className="text-white text-sm font-extrabold tracking-[2px] block">HALAQAH 5.0</span>
-              <span className="text-[10px] text-blue-100 block mt-0.5 uppercase tracking-widest font-bold">Sistem Pembinaan Karakter</span>
+            <div className="w-full bg-blue-900 py-5 px-4 text-center border-b border-blue-950">
+              <span className="text-white text-base font-extrabold tracking-[1px] block">ID Card HALAQAH 5.0</span>
             </div>
 
             {/* Body */}
@@ -334,10 +314,11 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
         {/* Modal actions */}
         <div className="w-full bg-slate-50 p-4 border-t border-slate-200 flex gap-2">
           <button
-            onClick={handlePrint}
-            className="w-full py-2.5 px-4 bg-blue-900 hover:bg-blue-950 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            onClick={handleDownloadImage}
+            disabled={isDownloading}
+            className="w-full py-2.5 px-4 bg-blue-900 hover:bg-blue-950 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
           >
-            <Printer className="w-4 h-4" /> Cetak Kartu QR
+            <Download className="w-4 h-4" /> {isDownloading ? 'Mengunduh...' : 'Unduh Kartu QR (Save Image)'}
           </button>
         </div>
 
