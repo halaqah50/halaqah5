@@ -6,7 +6,74 @@ interface MemberCardProps {
   onClose: () => void;
 }
 
+function formatToDdMmYyyy(dateStr: string): string {
+  if (!dateStr) return '';
+  
+  const cleaned = dateStr.trim();
+  
+  // Try pattern matching for dd/mm/yyyy with or without times (e.g., "17/06/2026 07:58:00" or "17-06-2026" or "17/6/2026")
+  const slashDashRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/;
+  const match = cleaned.match(slashDashRegex);
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const month = match[2].padStart(2, '0');
+    const year = match[3];
+    return `${day}-${month}-${year}`;
+  }
+
+  // Indonesian Text Month parser, e.g. "18 Januari 2026" or "18 Jan 2026"
+  const indonesianMonths: Record<string, string> = {
+    januari: '01', jan: '01',
+    februari: '02', feb: '02',
+    maret: '03', mar: '03',
+    april: '04', apr: '04',
+    mei: '05',
+    juni: '06', jun: '06',
+    juli: '07', jul: '07',
+    agustus: '08', agu: '08', ags: '08',
+    september: '09', sep: '09',
+    oktober: '10', okt: '10',
+    november: '11', nov: '11',
+    desember: '12', des: '12'
+  };
+
+  const words = cleaned.toLowerCase().split(/\s+/);
+  if (words.length >= 3) {
+    const dVal = parseInt(words[0], 10);
+    const yVal = parseInt(words[2], 10);
+    if (!isNaN(dVal) && !isNaN(yVal) && yVal > 1900 && yVal < 2100) {
+      const monthWord = words[1];
+      const mVal = indonesianMonths[monthWord];
+      if (mVal) {
+        return `${String(dVal).padStart(2, '0')}-${mVal}-${yVal}`;
+      }
+    }
+  }
+
+  // Try parsing with native Date if everything else fails
+  try {
+    const d = new Date(cleaned);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  return cleaned;
+}
+
 export default function MemberCard({ member, onClose }: MemberCardProps) {
+  // Address is limited to 25 characters
+  const rawAlamat = member.alamat || '';
+  const limitedAlamat = rawAlamat.substring(0, 25);
+  
+  // Date is formatted strictly to dd-mm-yyyy without time
+  const formattedDate = formatToDdMmYyyy(member.tanggalBergabung);
+
   // We use QR Server API to generate high-fidelity vectors
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(member.nama)}&color=0f172a&margin=10`;
 
@@ -91,7 +158,7 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
               background-color: #eff6ff;
               color: #1e3a8a;
               padding: 4px 12px;
-               border-radius: 12px;
+              border-radius: 12px;
               text-transform: uppercase;
             }
             .qr-wrapper {
@@ -125,7 +192,7 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
             .meta-tag {
               font-weight: bold;
               color: #64748b;
-              width: 60px;
+              width: 100px;
             }
             .card-footer {
               background-color: #f8fafc;
@@ -170,11 +237,11 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
                 </div>
                 <div class="meta-row">
                   <span class="meta-tag">Alamat:</span>
-                  <span>${member.alamat}</span>
+                  <span>${limitedAlamat}</span>
                 </div>
                 <div class="meta-row">
-                  <span class="meta-tag">Mulai:</span>
-                  <span>${member.tanggalBergabung}</span>
+                  <span class="meta-tag">Tanggal Gabung:</span>
+                  <span>${formattedDate}</span>
                 </div>
               </div>
             </div>
@@ -209,7 +276,7 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
             <X className="w-5 h-5" />
           </button>
         </div>
-
+        
         {/* Beautiful Physical Card Style */}
         <div className="p-6 flex flex-col items-center w-full">
           <div className="w-72 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-md flex flex-col items-center select-none">
@@ -242,18 +309,18 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
               <div className="w-full space-y-1.5 mt-1 border-t border-slate-100 pt-3 text-[11px] text-slate-600 text-left">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-3.5 h-3.5 text-blue-900" />
-                  <span className="font-bold text-slate-500 w-12 shrink-0">No. WA:</span>
+                  <span className="font-bold text-slate-500 w-24 shrink-0">No. WA:</span>
                   <span className="text-slate-800 font-semibold truncate">{member.nomorWA}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-3.5 h-3.5 text-blue-900" />
-                  <span className="font-bold text-slate-500 w-12 shrink-0">Alamat:</span>
-                  <span className="text-slate-800 font-semibold truncate">{member.alamat}</span>
+                  <span className="font-bold text-slate-500 w-24 shrink-0">Alamat:</span>
+                  <span className="text-slate-800 font-semibold truncate">{limitedAlamat}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-blue-900" />
-                  <span className="font-bold text-slate-500 w-12 shrink-0">Mulai:</span>
-                  <span className="text-slate-800 font-semibold">{member.tanggalBergabung}</span>
+                  <span className="font-bold text-slate-500 w-24 shrink-0">Tanggal Gabung:</span>
+                  <span className="text-slate-800 font-semibold">{formattedDate}</span>
                 </div>
               </div>
             </div>
