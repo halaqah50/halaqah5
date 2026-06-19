@@ -181,9 +181,9 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
       ctx.textAlign = 'left';
       ctx.font = 'bold 13px system-ui, sans-serif';
 
-      // No. WA Row
+      // Nomor ID Row
       ctx.fillStyle = '#64748b';
-      ctx.fillText('No. WA:', 45, 485);
+      ctx.fillText('Nomor ID:', 45, 485);
       ctx.fillStyle = '#1e293b';
       ctx.font = '600 13px system-ui, sans-serif';
       ctx.fillText(member.nomorWA, 155, 485);
@@ -289,7 +289,7 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
               <div className="w-full space-y-1.5 mt-1 border-t border-slate-100 pt-3 text-[11px] text-slate-600 text-left">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-3.5 h-3.5 text-blue-900" />
-                  <span className="font-bold text-slate-500 w-24 shrink-0">No. WA:</span>
+                  <span className="font-bold text-slate-500 w-24 shrink-0">Nomor ID:</span>
                   <span className="text-slate-800 font-semibold truncate">{member.nomorWA}</span>
                 </div>
                 <div className="flex items-center gap-2">
