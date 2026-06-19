@@ -23,7 +23,9 @@ import {
   Lock,
   ChevronRight,
   ChevronDown,
-  Trash2
+  Trash2,
+  Menu,
+  X
 } from 'lucide-react';
 
 import { Member, Attendance, Pembina, AttendancePembina, AppState } from './types';
@@ -358,6 +360,7 @@ export default function App() {
 
   // Scanner Active state
   const [isScannerActive, setIsScannerActive ] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Form states - Member Baru
   const [newMemberForm, setNewMemberForm] = useState({
@@ -1348,7 +1351,8 @@ export default function App() {
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-12 py-8 flex flex-col gap-8 print:p-0 relative z-10">
           
           {/* NAVIGATION TABS (no-print) */}
-          <nav className="flex flex-wrap p-1.5 bg-slate-100 border border-slate-200 rounded-2xl gap-1 no-print">
+          {/* Desktop View (remains identical to original) */}
+          <nav className="hidden md:flex flex-wrap p-1.5 bg-slate-100 border border-slate-200 rounded-2xl gap-1 no-print">
             <button
               onClick={() => { setActiveTab('dashboard'); playSoundEffect('click'); }}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-250 cursor-pointer ${
@@ -1401,6 +1405,109 @@ export default function App() {
               <span>Google Sheets Sync</span>
             </button>
           </nav>
+
+          {/* Mobile View: High-Quality Interactive Burger Menu (no-print) */}
+          <div className="md:hidden relative no-print">
+            <div className="flex items-center justify-between p-3 bg-slate-100 border border-slate-200 rounded-2xl shadow-xs">
+              <div className="flex flex-col pl-2">
+                <span className="text-[9px] font-extrabold text-blue-900/60 uppercase tracking-widest">Menu Navigasi</span>
+                <span className="text-xs font-extrabold text-slate-800 tracking-tight mt-0.5">
+                  {activeTab === 'dashboard' && '📊 Dashboard Monitoring'}
+                  {activeTab === 'scan' && '🔍 Scan Presensi QR'}
+                  {activeTab === 'members' && `👥 Anggota Halaqah (${state.members.length})`}
+                  {activeTab === 'pembina' && `🎓 Pembina (${state.pembina.length})`}
+                  {activeTab === 'sheets' && '🟢 Google Sheets Sync'}
+                </span>
+              </div>
+              <button
+                onClick={() => { setIsMobileMenuOpen(!isMobileMenuOpen); playSoundEffect('click'); }}
+                className="p-2.5 bg-white border border-slate-200 text-slate-700 hover:text-blue-900 rounded-xl hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              >
+                {isMobileMenuOpen ? (
+                  <>
+                    <X className="w-4 h-4 text-rose-600" />
+                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Tutup</span>
+                  </>
+                ) : (
+                  <>
+                    <Menu className="w-4 h-4 text-blue-900 animate-pulse" />
+                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Menu</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {isMobileMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className="absolute left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl shadow-xl p-2.5 z-50 flex flex-col gap-1.5"
+                >
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
+                    className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer text-left flex items-center justify-between ${
+                      activeTab === 'dashboard' 
+                        ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
+                        : 'text-slate-600 hover:text-blue-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <span>Dashboard Monitoring</span>
+                    {activeTab === 'dashboard' && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('scan'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
+                    className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer text-left flex items-center justify-between ${
+                      activeTab === 'scan' 
+                        ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
+                        : 'text-slate-600 hover:text-blue-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <span>Scan Presensi QR</span>
+                    {activeTab === 'scan' && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('members'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
+                    className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer text-left flex items-center justify-between ${
+                      activeTab === 'members' 
+                        ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
+                        : 'text-slate-600 hover:text-blue-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <span>Anggota Halaqah ({state.members.length})</span>
+                    {activeTab === 'members' && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('pembina'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
+                    className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer text-left flex items-center justify-between ${
+                      activeTab === 'pembina' 
+                        ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
+                        : 'text-slate-600 hover:text-blue-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <span>Pembina ({state.pembina.length})</span>
+                    {activeTab === 'pembina' && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('sheets'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
+                    className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 flex items-center justify-between cursor-pointer ${
+                      activeTab === 'sheets' 
+                        ? 'bg-emerald-700 text-white font-extrabold shadow-sm' 
+                        : 'text-emerald-750 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-1.5 h-1.5 rounded-full bg-white animate-pulse`} />
+                      <span>Google Sheets Sync</span>
+                    </div>
+                    {activeTab === 'sheets' && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* TAB CONTENTS CONTAINER */}
           <div className="flex flex-col gap-8">
