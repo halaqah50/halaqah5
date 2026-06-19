@@ -240,7 +240,7 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
                   <span>${limitedAlamat}</span>
                 </div>
                 <div class="meta-row">
-                  <span class="meta-tag">Tanggal Gabung:</span>
+                  <span class="meta-tag">Tgl Daftar:</span>
                   <span>${formattedDate}</span>
                 </div>
               </div>
@@ -319,7 +319,7 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-blue-900" />
-                  <span className="font-bold text-slate-500 w-24 shrink-0">Tanggal Gabung:</span>
+                  <span className="font-bold text-slate-500 w-24 shrink-0">Tgl Daftar:</span>
                   <span className="text-slate-800 font-semibold">{formattedDate}</span>
                 </div>
               </div>
