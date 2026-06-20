@@ -324,14 +324,26 @@ function doPost(e) {
 `;
 
 export default function App() {
-  // Auth state - Hardcoded to offline secure admin
-  const [user, setUser] = useState<any>({
-    displayName: 'Admin HALAQAH 5.0',
-    email: 'admin@halaqah.local',
-    photoURL: null
+  // Auth state - Secure admin login with cm3105 / dakwah
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const [user, setUser] = useState<any>(() => {
+    const saved = localStorage.getItem('halaqah_logged_in');
+    return saved === 'true' ? {
+      displayName: 'Admin HALAQAH 5.0',
+      email: 'admin@halaqah.local',
+      photoURL: null
+    } : null;
   });
-  const [token, setToken] = useState<string | null>('offline-token');
-  const [needsAuth, setNeedsAuth] = useState(false);
+  const [token, setToken] = useState<string | null>(() => {
+    const saved = localStorage.getItem('halaqah_logged_in');
+    return saved === 'true' ? 'offline-token' : null;
+  });
+  const [needsAuth, setNeedsAuth] = useState(() => {
+    return localStorage.getItem('halaqah_logged_in') !== 'true';
+  });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // App Business State
@@ -526,9 +538,42 @@ export default function App() {
     }
   }, [state.members, state.pembina, state.attendance, state.attendancePembina, state.isLoading]);
 
-  // Dummy login triggers if any code path checks it
-  const handleLogin = async () => {
-    // Unused but kept as stub
+  // Custom secure credentials check login
+  const handleCustomLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    setIsLoggingIn(true);
+
+    setTimeout(() => {
+      if (username.trim() === 'cm3105' && password === 'dakwah') {
+        localStorage.setItem('halaqah_logged_in', 'true');
+        setUser({
+          displayName: 'Admin HALAQAH 5.0',
+          email: 'admin@halaqah.local',
+          photoURL: null
+        });
+        setToken('offline-token');
+        setNeedsAuth(false);
+        playSoundEffect('success');
+        showToast('Selamat Datang di Halaqah 5.0!');
+      } else {
+        setLoginError('User atau Password salah!');
+        playSoundEffect('error');
+      }
+      setIsLoggingIn(false);
+    }, 400);
+  };
+
+  // Logout from system
+  const handleLogout = () => {
+    playSoundEffect('click');
+    localStorage.removeItem('halaqah_logged_in');
+    setUser(null);
+    setToken(null);
+    setNeedsAuth(true);
+    setUsername('');
+    setPassword('');
+    setLoginError(null);
   };
 
   // Reset database back to default state
@@ -1188,47 +1233,82 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="w-full max-w-md bg-white p-8 text-center relative z-10 border border-slate-200 shadow-xl rounded-3xl"
+          className="w-full max-w-md bg-white p-8 relative z-10 border border-slate-200 shadow-xl rounded-2xl"
         >
           {/* Custom Brand Logo - Biru Navy Tulisan Putih */}
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-900 rounded-2xl text-white font-black text-2xl mb-6 shadow-md shadow-blue-900/20">
-            HQ
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-900 rounded-2xl text-white font-black text-2xl mb-6 shadow-md shadow-blue-900/20">
+              HQ
+            </div>
+   
+            <h1 className="text-3xl font-extrabold text-blue-950 tracking-tight leading-none">
+              HALAQAH 5.0
+            </h1>
+            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mt-2 bg-blue-50 py-1.5 px-3 rounded-full inline-block border border-blue-100">
+              Sistem Administrasi Aktivitas
+            </p>
+            <p className="text-xs text-slate-500 font-semibold mt-4 max-w-xs mx-auto leading-relaxed">
+              Silakan masukkan User dan Password untuk masuk ke halaman utama pengajian Halaqah 5.0.
+            </p>
           </div>
- 
-          <h1 className="text-3xl font-extrabold text-blue-950 tracking-tight leading-none">
-            HALAQAH 5.0
-          </h1>
-          <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mt-2 bg-blue-50 py-1.5 px-3 rounded-full inline-block border border-blue-100">
-            Sistem Administrasi Aktivitas
-          </p>
-          <p className="text-xs text-slate-500 font-semibold mt-4 max-w-xs mx-auto leading-relaxed">
-            Platform modern pembinaan halaqah terintegrasi real-time dengan Google Sheets untuk scan QR presensi, input anggota, dan monitoring rekapitulasi otomatis.
-          </p>
  
           <div className="my-6 border-b border-slate-200" />
  
-          {/* Secure Google Login Button */}
-          <button
-            onClick={handleLogin}
-            disabled={isLoggingIn}
-            className="w-full inline-flex items-center justify-center gap-3 bg-slate-50 hover:bg-slate-100 text-slate-800 font-extrabold text-sm py-3.5 px-6 rounded-xl border border-slate-200/80 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
-          >
-            {isLoggingIn ? (
-              <RefreshCw className="w-5 h-5 animate-spin text-blue-900" />
-            ) : (
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-              </svg>
+          {/* Secure Custom Credentials Form */}
+          <form onSubmit={handleCustomLogin} className="space-y-4 text-left">
+            {loginError && (
+              <div className="bg-rose-50 text-rose-700 text-xs font-semibold px-4 py-3 rounded-xl border border-rose-100 flex items-center gap-2 animate-pulse">
+                <span className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0"></span>
+                <span>{loginError}</span>
+              </div>
             )}
-            <span>{isLoggingIn ? 'Menghubungkan Akun...' : 'Masuk Dengan Google'}</span>
-          </button>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">User</label>
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Masukkan user"
+                className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-800 font-semibold text-sm px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 transition-colors placeholder:text-slate-400 outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Masukkan password"
+                className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-800 font-semibold text-sm px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 transition-colors placeholder:text-slate-400 outline-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full bg-blue-900 hover:bg-blue-950 text-white font-extrabold text-sm py-3.5 px-6 rounded-xl transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 mt-2"
+            >
+              {isLoggingIn ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Memverifikasi...</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Masuk Aplikasi</span>
+                </>
+              )}
+            </button>
+          </form>
  
-          <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 uppercase tracking-widest font-semibold mt-4">
+          <div className="mt-6 flex items-center justify-center gap-2 text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
             <Lock className="w-3.5 h-3.5 text-blue-900" />
-            <span className="text-slate-500">Secure OAuth Integration</span>
+            <span className="text-slate-500">Sistem Autentikasi Internal</span>
           </div>
         </motion.div>
       </div>
@@ -1303,6 +1383,14 @@ export default function App() {
             onClick={handleResetDatabase}
             className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200 cursor-pointer"
             title="Reset Database ke Bawaan"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200 cursor-pointer"
+            title="Keluar dari Aplikasi"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -1503,6 +1591,18 @@ export default function App() {
                       <span>Google Sheets Sync</span>
                     </div>
                     {activeTab === 'sheets' && <Check className="w-4 h-4 text-white" />}
+                  </button>
+
+                  <div className="h-px bg-slate-100 my-1" />
+
+                  <button
+                    onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+                    className="px-4 py-3 rounded-xl text-xs font-extrabold tracking-wider uppercase transition-all duration-150 flex items-center justify-between cursor-pointer text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <LogOut className="w-4 h-4" />
+                      <span>Keluar Aplikasi</span>
+                    </div>
                   </button>
                 </motion.div>
               )}
