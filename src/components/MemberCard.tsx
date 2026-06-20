@@ -215,6 +215,34 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
       
       // Smart responsive word wrapping for Address on output image
       const addr = limitedAlamat;
+      
+      // Helper to draw text with full justification (rata kanan-kiri)
+      const drawJustifiedLine = (textStr: string, xPos: number, yPos: number, maxW: number, isLast: boolean) => {
+        const lineWords = textStr.split(/\s+/).filter(Boolean);
+        if (lineWords.length <= 1 || isLast) {
+          ctx.fillText(textStr, xPos, yPos);
+          return;
+        }
+        
+        let totalWordsW = 0;
+        for (const w of lineWords) {
+          totalWordsW += ctx.measureText(w).width;
+        }
+        
+        const extraSpace = maxW - totalWordsW;
+        if (extraSpace <= 0) {
+          ctx.fillText(textStr, xPos, yPos);
+          return;
+        }
+        
+        const spaceW = extraSpace / (lineWords.length - 1);
+        let currX = xPos;
+        for (let idx = 0; idx < lineWords.length; idx++) {
+          ctx.fillText(lineWords[idx], currX, yPos);
+          currX += ctx.measureText(lineWords[idx]).width + spaceW;
+        }
+      };
+
       const words = addr.split(' ');
       let line = '';
       const lines: string[] = [];
@@ -234,7 +262,8 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
       let currentY = addrY;
       const lineHeight = 18;
       for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], valueX, currentY);
+        const isLastLine = i === lines.length - 1;
+        drawJustifiedLine(lines[i], valueX, currentY, maxValueWidth, isLastLine);
         if (i < lines.length - 1) {
           currentY += lineHeight;
         }
