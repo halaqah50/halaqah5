@@ -2052,7 +2052,7 @@ export default function App() {
                       </div>
 
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Nomor WhatsApp</label>
+                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">NO ID</label>
                         <input
                           type="tel"
                           value={newMemberForm.nomorWA}
@@ -2098,7 +2098,7 @@ export default function App() {
                           <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                             <th className="py-3 px-4 w-12 text-center">No</th>
                             <th className="py-3 px-4">Nama</th>
-                            <th className="py-3 px-4">WhatsApp</th>
+                            <th className="py-3 px-4">NO ID</th>
                             <th className="py-3 px-4">Alamat</th>
                             <th className="py-3 px-4 text-center">Kartu QR Member</th>
                           </tr>
