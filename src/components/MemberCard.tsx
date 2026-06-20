@@ -181,43 +181,77 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
       ctx.textAlign = 'left';
       
       const labelX = 45;
-      const colonX = 135;
-      const valueX = 150;
+      const colonX = 135; // Positioned perfectly centered
+      const valueX = 150; // Aligned correctly
+      const maxValueWidth = width - 40 - valueX; // 450 - 40 - 150 = 260px max width
 
       // Nomor ID Row
       ctx.fillStyle = '#64748b';
       ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.textAlign = 'left';
       ctx.fillText('No. ID', labelX, 485);
+      
+      ctx.textAlign = 'center';
       ctx.fillText(':', colonX, 485);
+      
+      ctx.textAlign = 'left';
       ctx.fillStyle = '#1e293b';
       ctx.font = '600 13px system-ui, sans-serif';
       ctx.fillText(member.nomorWA, valueX, 485);
 
       // Alamat Row
+      const addrY = 520;
       ctx.fillStyle = '#64748b';
       ctx.font = 'bold 13px system-ui, sans-serif';
-      ctx.fillText('Alamat', labelX, 520);
-      ctx.fillText(':', colonX, 520);
+      ctx.textAlign = 'left';
+      ctx.fillText('Alamat', labelX, addrY);
+      
+      ctx.textAlign = 'center';
+      ctx.fillText(':', colonX, addrY);
+      
+      ctx.textAlign = 'left';
       ctx.fillStyle = '#1e293b';
       ctx.font = '600 13px system-ui, sans-serif';
       
+      // Smart responsive word wrapping for Address on output image
       const addr = limitedAlamat;
-      // Wrap if over 32 characters
-      if (addr.length > 32) {
-        const line1 = addr.substring(0, 32);
-        const line2 = addr.substring(32);
-        ctx.fillText(line1, valueX, 520);
-        ctx.fillText(line2, valueX, 538);
-      } else {
-        ctx.fillText(addr, valueX, 520);
+      const words = addr.split(' ');
+      let line = '';
+      const lines: string[] = [];
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxValueWidth && n > 0) {
+          lines.push(line.trim());
+          line = words[n] + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      lines.push(line.trim());
+
+      // Render lines
+      let currentY = addrY;
+      const lineHeight = 18;
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], valueX, currentY);
+        if (i < lines.length - 1) {
+          currentY += lineHeight;
+        }
       }
 
-      // Tgl Daftar Row
-      const dateY = addr.length > 32 ? 570 : 555;
+      // Tgl Daftar Row (Placed dynamically based on wrapped lines)
+      const dateY = lines.length > 1 ? addrY + (lines.length - 1) * lineHeight + 35 : 555;
+      
       ctx.fillStyle = '#64748b';
       ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.textAlign = 'left';
       ctx.fillText('Tgl Daftar', labelX, dateY);
+      
+      ctx.textAlign = 'center';
       ctx.fillText(':', colonX, dateY);
+      
+      ctx.textAlign = 'left';
       ctx.fillStyle = '#1e293b';
       ctx.font = '600 13px system-ui, sans-serif';
       ctx.fillText(formattedDate, valueX, dateY);
