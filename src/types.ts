@@ -3,6 +3,7 @@ export interface Member {
   alamat: string;
   nomorWA: string;
   tanggalBergabung: string;
+  pembina?: string;
 }
 
 export interface Attendance {
@@ -29,11 +30,19 @@ export interface AttendancePembina {
   status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa';
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  createdAt: string;
+  memberNames: string[];
+}
+
 export interface AppState {
   members: Member[];
   attendance: Attendance[];
   pembina: Pembina[];
   attendancePembina: AttendancePembina[];
+  groups?: Group[];
   spreadsheetId: string | null;
   isLoading: boolean;
   error: string | null;

@@ -352,13 +352,14 @@ export default function App() {
     attendance: [],
     pembina: [],
     attendancePembina: [],
+    groups: [],
     spreadsheetId: 'Local Device',
     isLoading: true,
     error: null
   });
 
   // UI state
-  const [activeTab, setActiveTab ] = useState<'dashboard' | 'scan' | 'members' | 'pembina' | 'sheets'>('dashboard');
+  const [activeTab, setActiveTab ] = useState<'dashboard' | 'scan' | 'members' | 'pembina' | 'sheets' | 'group'>('dashboard');
   const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => {
     const stored = localStorage.getItem('halaqah_apps_script_url');
     if (stored && stored.trim() !== '') return stored;
@@ -378,7 +379,8 @@ export default function App() {
   const [newMemberForm, setNewMemberForm] = useState({
     nama: '',
     alamat: '',
-    nomorWA: ''
+    nomorWA: '',
+    pembina: '',
   });
   const [isSubmittingMember, setIsSubmittingMember] = useState(false);
 
@@ -389,6 +391,10 @@ export default function App() {
     nomorWA: ''
   });
   const [isSubmittingPembina, setIsSubmittingPembina] = useState(false);
+
+  // Group Management UI states
+  const [newGroupName, setNewGroupName] = useState('');
+  const [groupInvites, setGroupInvites] = useState<Record<string, string>>({});
 
   // Session state for current Presence Scanner
   const [sessionId, setSessionId] = useState('Pertemuan 1');
@@ -474,6 +480,7 @@ export default function App() {
             attendance: parsed.attendance || [],
             pembina: parsed.pembina || [],
             attendancePembina: parsed.attendancePembina || [],
+            groups: parsed.groups || [],
             spreadsheetId: 'Local Device',
             isLoading: false,
             error: null
@@ -502,6 +509,7 @@ export default function App() {
       pembina: DEFAULT_PEMBINA,
       attendance: DEFAULT_ATTENDANCE,
       attendancePembina: DEFAULT_ATTENDANCE_PEMBINA,
+      groups: [],
       spreadsheetId: 'Local Device',
       isLoading: false,
       error: null
@@ -537,13 +545,14 @@ export default function App() {
           members: state.members,
           pembina: state.pembina,
           attendance: state.attendance,
-          attendancePembina: state.attendancePembina
+          attendancePembina: state.attendancePembina,
+          groups: state.groups || []
         }));
       } catch (e) {
         console.error('Error saving state to localStorage:', e);
       }
     }
-  }, [state.members, state.pembina, state.attendance, state.attendancePembina, state.isLoading]);
+  }, [state.members, state.pembina, state.attendance, state.attendancePembina, state.groups, state.isLoading]);
 
   // Custom secure credentials check login
   const handleCustomLogin = (e: React.FormEvent) => {
@@ -595,6 +604,7 @@ export default function App() {
       pembina: DEFAULT_PEMBINA,
       attendance: DEFAULT_ATTENDANCE,
       attendancePembina: DEFAULT_ATTENDANCE_PEMBINA,
+      groups: [],
       spreadsheetId: 'Local Device',
       isLoading: false,
       error: null
@@ -698,15 +708,26 @@ export default function App() {
       const json = await res.json();
       
       if (json && json.success) {
-        setState(s => ({
-          ...s,
-          members: Array.isArray(json.members) ? json.members : s.members,
-          pembina: Array.isArray(json.pembina) ? json.pembina : s.pembina,
-          attendance: Array.isArray(json.attendance) ? json.attendance : s.attendance,
-          attendancePembina: Array.isArray(json.attendancePembina) ? json.attendancePembina : s.attendancePembina,
-          spreadsheetId: 'Google Sheet Terhubung',
-          error: null
-        }));
+        setState(s => {
+          const fetchedMembers = Array.isArray(json.members) ? json.members : s.members;
+          const mergedMembers = fetchedMembers.map((m: any) => {
+            const localMem = s.members.find(lm => lm.nama === m.nama);
+            return {
+              ...m,
+              pembina: m.pembina || (localMem ? localMem.pembina : '')
+            };
+          });
+          return {
+            ...s,
+            members: mergedMembers,
+            pembina: Array.isArray(json.pembina) ? json.pembina : s.pembina,
+            attendance: Array.isArray(json.attendance) ? json.attendance : s.attendance,
+            attendancePembina: Array.isArray(json.attendancePembina) ? json.attendancePembina : s.attendancePembina,
+            groups: s.groups || [],
+            spreadsheetId: 'Google Sheet Terhubung',
+            error: null
+          };
+        });
         if (!silent) showToast('Sinkronisasi sukses! Data terbaru berhasil ditarik dari Google Sheets.');
       } else {
         throw new Error(json.error || 'Server Apps Script mengembalikan status gagal.');
@@ -790,7 +811,8 @@ export default function App() {
         nama: newMemberForm.nama.trim(),
         alamat: newMemberForm.alamat.trim() || '-',
         nomorWA: newMemberForm.nomorWA.trim() || '-',
-        tanggalBergabung: tgl
+        tanggalBergabung: tgl,
+        pembina: ('pembina' in newMemberForm ? (newMemberForm as any).pembina : '') || '-'
       };
 
       // Direct local update
@@ -799,7 +821,7 @@ export default function App() {
         members: [memberObj, ...s.members]
       }));
 
-      setNewMemberForm({ nama: '', alamat: '', nomorWA: '' });
+      setNewMemberForm({ nama: '', alamat: '', nomorWA: '', pembina: '' } as any);
       playSoundEffect('success');
       showToast(`Anggota "${memberObj.nama}" berhasil ditambahkan!`);
       sendToAppsScript('addMember', memberObj);
@@ -854,6 +876,119 @@ export default function App() {
     } finally {
       setIsSubmittingPembina(false);
     }
+  };
+
+  // Create a new Group
+  const handleCreateGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroupName.trim()) {
+      alert('Nama group wajib diisi.');
+      return;
+    }
+
+    const groupExists = (state.groups || []).some(g => g.name.toLowerCase() === newGroupName.trim().toLowerCase());
+    if (groupExists) {
+      alert('Group dengan nama tersebut sudah ada.');
+      return;
+    }
+
+    const tgl = new Date().toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const groupObj = {
+      id: 'grp_' + Date.now(),
+      name: newGroupName.trim(),
+      createdAt: tgl,
+      memberNames: []
+    };
+
+    setState(s => ({
+      ...s,
+      groups: [...(s.groups || []), groupObj]
+    }));
+
+    setNewGroupName('');
+    playSoundEffect('success');
+    showToast(`Group "${groupObj.name}" berhasil dibuat!`);
+  };
+
+  // Invite member into group
+  const handleInviteToGroup = (groupId: string, memberNama: string) => {
+    if (!memberNama) {
+      alert('Silakan pilih anggota terlebih dahulu.');
+      return;
+    }
+
+    setState(s => {
+      const updatedGroups = (s.groups || []).map(g => {
+        if (g.id === groupId) {
+          if (g.memberNames.includes(memberNama)) {
+            return g;
+          }
+          return {
+            ...g,
+            memberNames: [...g.memberNames, memberNama]
+          };
+        }
+        return g;
+      });
+
+      return {
+        ...s,
+        groups: updatedGroups
+      };
+    });
+
+    setGroupInvites(prev => ({
+      ...prev,
+      [groupId]: ''
+    }));
+
+    playSoundEffect('success');
+    showToast(`Anggota "${memberNama}" berhasil ditambahkan ke group!`);
+  };
+
+  // Remove member from group
+  const handleRemoveGroupMember = (groupId: string, memberNama: string) => {
+    const confirm = window.confirm(`Apakah Anda yakin ingin mengeluarkan "${memberNama}" dari group ini?`);
+    if (!confirm) return;
+
+    setState(s => {
+      const updatedGroups = (s.groups || []).map(g => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            memberNames: g.memberNames.filter(n => n !== memberNama)
+          };
+        }
+        return g;
+      });
+
+      return {
+        ...s,
+        groups: updatedGroups
+      };
+    });
+
+    playSoundEffect('click');
+    showToast(`Anggota "${memberNama}" dikeluarkan dari group.`);
+  };
+
+  // Delete entire group
+  const handleDeleteGroup = (groupId: string, groupName: string) => {
+    const confirm = window.confirm(`Apakah Anda yakin ingin menghapus group "${groupName}" secara permanen?`);
+    if (!confirm) return;
+
+    setState(s => ({
+      ...s,
+      groups: (s.groups || []).filter(g => g.id !== groupId)
+    }));
+
+    playSoundEffect('click');
+    showToast(`Group "${groupName}" berhasil dihapus.`);
   };
 
   // Add Pembina Attendance list session
@@ -1479,7 +1614,7 @@ export default function App() {
                   : 'text-slate-600 hover:text-blue-900 hover:bg-white/50'
               }`}
             >
-              Anggota Halaqah ({state.members.length})
+              Anggota ({state.members.length})
             </button>
             <button
               onClick={() => { setActiveTab('pembina'); playSoundEffect('click'); }}
@@ -1490,6 +1625,16 @@ export default function App() {
               }`}
             >
               Pembina ({state.pembina.length})
+            </button>
+            <button
+              onClick={() => { setActiveTab('group'); playSoundEffect('click'); }}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-250 cursor-pointer ${
+                activeTab === 'group' 
+                  ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
+                  : 'text-slate-600 hover:text-blue-900 hover:bg-white/50'
+              }`}
+            >
+              Group ({state.groups?.length || 0})
             </button>
             <button
               onClick={() => { setActiveTab('sheets'); playSoundEffect('click'); }}
@@ -1512,8 +1657,9 @@ export default function App() {
                 <span className="text-xs font-extrabold text-slate-800 tracking-tight mt-0.5">
                   {activeTab === 'dashboard' && '📊 Dashboard Monitoring'}
                   {activeTab === 'scan' && '🔍 Scan Presensi QR'}
-                  {activeTab === 'members' && `👥 Anggota Halaqah (${state.members.length})`}
+                  {activeTab === 'members' && `👥 Anggota (${state.members.length})`}
                   {activeTab === 'pembina' && `🎓 Pembina (${state.pembina.length})`}
+                  {activeTab === 'group' && `👥 Group (${state.groups?.length || 0})`}
                   {activeTab === 'sheets' && '🟢 Google Sheets Sync'}
                 </span>
               </div>
@@ -1574,7 +1720,7 @@ export default function App() {
                         : 'text-slate-600 hover:text-blue-900 hover:bg-slate-100/70'
                     }`}
                   >
-                    <span>Anggota Halaqah ({state.members.length})</span>
+                    <span>Anggota ({state.members.length})</span>
                     {activeTab === 'members' && <Check className="w-4 h-4 text-white" />}
                   </button>
                   <button
@@ -1589,11 +1735,22 @@ export default function App() {
                     {activeTab === 'pembina' && <Check className="w-4 h-4 text-white" />}
                   </button>
                   <button
+                    onClick={() => { setActiveTab('group'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
+                    className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer text-left flex items-center justify-between ${
+                      activeTab === 'group' 
+                        ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
+                        : 'text-slate-600 hover:text-blue-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <span>Group ({state.groups?.length || 0})</span>
+                    {activeTab === 'group' && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                  <button
                     onClick={() => { setActiveTab('sheets'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
                     className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 flex items-center justify-between cursor-pointer ${
                       activeTab === 'sheets' 
                         ? 'bg-emerald-700 text-white font-extrabold shadow-sm' 
-                        : 'text-emerald-750 hover:bg-emerald-50'
+                        : 'text-emerald-750 hover:bg-emerald-55'
                     }`}
                   >
                     <div className="flex items-center gap-1.5">
@@ -2172,6 +2329,22 @@ export default function App() {
                         />
                       </div>
 
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Pembina Halaqah (Mapping)</label>
+                        <select
+                          value={newMemberForm.pembina}
+                          onChange={(e) => setNewMemberForm({...newMemberForm, pembina: e.target.value})}
+                          className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-900 font-semibold bg-white cursor-pointer"
+                        >
+                          <option value="">-- Hubungkan Pembina --</option>
+                          {state.pembina.map((pem) => (
+                            <option key={pem.nama} value={pem.nama}>
+                              {pem.nama}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       <button
                         type="submit"
                         disabled={isSubmittingMember}
@@ -2210,13 +2383,14 @@ export default function App() {
                             <th className="py-3 px-4">Nama</th>
                             <th className="py-3 px-4">NO ID</th>
                             <th className="py-3 px-4">Alamat</th>
+                            <th className="py-3 px-4">Pembina</th>
                             <th className="py-3 px-4 text-center">Kartu QR Member</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {state.members.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="py-12 text-center text-slate-500 font-semibold">
+                              <td colSpan={6} className="py-12 text-center text-slate-500 font-semibold">
                                 Belum ada anggota yang terdaftar di Google Sheets. Silakan tambahkan anggota baru!
                               </td>
                             </tr>
@@ -2226,7 +2400,36 @@ export default function App() {
                                 <td className="py-3.5 px-4 text-center text-slate-400 font-bold">{idx + 1}</td>
                                 <td className="py-3.5 px-4 font-extrabold text-slate-950">{member.nama}</td>
                                 <td className="py-3.5 px-4 font-semibold text-slate-600">{member.nomorWA}</td>
-                                <td className="py-3.5 px-4 text-slate-505 truncate max-w-[150px]">{member.alamat}</td>
+                                <td className="py-3.5 px-4 text-slate-505 truncate max-w-[155px]">{member.alamat}</td>
+                                <td className="py-3.5 px-4 text-xs font-semibold">
+                                  <select
+                                    value={member.pembina || ''}
+                                    onChange={(e) => {
+                                      const newPembinaName = e.target.value;
+                                      setState(s => {
+                                        const updatedMembers = [...s.members];
+                                        updatedMembers[idx] = {
+                                          ...updatedMembers[idx],
+                                          pembina: newPembinaName
+                                        };
+                                        return {
+                                          ...s,
+                                          members: updatedMembers
+                                        };
+                                      });
+                                      playSoundEffect('click');
+                                      showToast(`Pembina untuk "${member.nama}" sukses di-map ke "${newPembinaName || '-'}"!`);
+                                    }}
+                                    className="px-2 py-1 max-w-[150px] bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs font-bold focus:outline-none focus:border-blue-900 cursor-pointer"
+                                  >
+                                    <option value="">-- Hubungkan Pembina --</option>
+                                    {state.pembina.map((pem) => (
+                                      <option key={pem.nama} value={pem.nama}>
+                                        {pem.nama}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
                                 <td className="py-3.5 px-4 text-center">
                                   <button
                                     onClick={() => {
@@ -2522,6 +2725,161 @@ export default function App() {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* ----------------- TAB: GROUP MANAGEMENT ----------------- */}
+            {activeTab === 'group' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in select-text">
+                
+                {/* Left: Create Group Form */}
+                <div className="lg:col-span-1">
+                  <div className="glass-card bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-5 sticky top-24">
+                    <div>
+                      <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Buat Group Baru</h3>
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                        Buat wadah kelompok/halaqah baru untuk mengelompokkan dan mengundang anggota yang ada.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleCreateGroup} className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Nama Group</label>
+                        <input
+                          type="text"
+                          required
+                          value={newGroupName}
+                          onChange={(e) => setNewGroupName(e.target.value)}
+                          placeholder="Contoh: Halaqah Abu Bakar"
+                          className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900 font-semibold bg-white"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full inline-flex items-center justify-center gap-2 bg-blue-900 hover:bg-blue-950 text-white font-extrabold py-3 px-4 rounded-xl text-xs cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Buat Group</span>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* Right: Group Dashboard / List */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                  <div className="glass-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                      <div>
+                        <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Daftar Group Halaqah</h3>
+                        <p className="text-[10px] text-slate-500 font-semibold mt-1">Manajemen group, penambahan, dan pengelolaan anggota group secara teratur.</p>
+                      </div>
+                      <span className="px-3 py-1 text-[10px] font-extrabold text-blue-900 bg-blue-50 border border-blue-100 rounded-lg">
+                        {(state.groups || []).length} Group
+                      </span>
+                    </div>
+
+                    <div className="p-6 flex flex-col gap-8">
+                      {(!state.groups || state.groups.length === 0) ? (
+                        <div className="py-12 text-center text-slate-505 font-semibold">
+                          Belum ada group yang dibuat. Silakan buat group harian baru di formulir sebelah kiri!
+                        </div>
+                      ) : (
+                        (state.groups || []).map((group) => {
+                          const availableMembers = state.members.filter(
+                            m => !(group.memberNames || []).includes(m.nama)
+                          );
+                          const activeInviteValue = groupInvites[group.id] || '';
+
+                          return (
+                            <div key={group.id} className="border border-slate-200 rounded-2xl p-5 hover:shadow-xs transition-shadow flex flex-col gap-4 bg-white">
+                              {/* Header Card Group */}
+                              <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+                                <div>
+                                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                                    <span>{group.name}</span>
+                                    <span className="px-2 py-0.5 text-[9px] font-extrabold text-blue-900 bg-blue-50 border border-blue-100 rounded">
+                                      {group.memberNames.length} Anggota
+                                    </span>
+                                  </h4>
+                                  <span className="text-[10px] text-slate-405 font-bold mt-1 block"> dibuat pada {group.createdAt}</span>
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteGroup(group.id, group.name)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Hapus Group"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {/* Invite Form Section */}
+                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex flex-col md:flex-row gap-3 items-center">
+                                <div className="flex-1 w-full flex flex-col gap-1.5">
+                                  <label className="text-[9px] font-extrabold text-blue-900 uppercase tracking-widest block">Undang Anggota Halaqah</label>
+                                  <select
+                                    value={activeInviteValue}
+                                    onChange={(e) => setGroupInvites(prev => ({ ...prev, [group.id]: e.target.value }))}
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-950 cursor-pointer"
+                                  >
+                                    <option value="">-- Pilih Anggota Halaqah --</option>
+                                    {availableMembers.map((m) => (
+                                      <option key={m.nama} value={m.nama}>
+                                        {m.nama} (ID: {m.nomorWA || '-'})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <button
+                                  onClick={() => handleInviteToGroup(group.id, activeInviteValue)}
+                                  className="w-full md:w-auto self-end inline-flex items-center gap-1.5 bg-blue-900 hover:bg-blue-950 text-white font-extrabold px-4 py-2 text-xs rounded-lg transition-all cursor-pointer shadow-sm hover:scale-[1.03] active:scale-[0.97]"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>Undang</span>
+                                </button>
+                              </div>
+
+                              {/* Group Member List Entries */}
+                              <div className="flex flex-col gap-2.5">
+                                <h5 className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">Daftar Anggota Group</h5>
+                                {group.memberNames.length === 0 ? (
+                                  <p className="text-[10px] text-slate-405 italic py-1 pl-1">Belum ada anggota di group ini. Undang dari daftar Anggota di atas.</p>
+                                ) : (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                    {group.memberNames.map((memberName) => {
+                                      const memberInfo = state.members.find(m => m.nama === memberName);
+                                      return (
+                                        <div key={memberName} className="flex items-center justify-between border border-slate-100 rounded-xl p-3 hover:bg-slate-50 transition-colors bg-white">
+                                          <div className="flex flex-col gap-0.5">
+                                            <span className="text-xs font-extrabold text-slate-800">{memberName}</span>
+                                            <span className="text-[9px] font-bold text-slate-500 truncate max-w-[150px]">
+                                              ID: {memberInfo?.nomorWA || '-'}  alamat: {memberInfo?.alamat || '-'}
+                                            </span>
+                                            {memberInfo?.pembina && (
+                                              <span className="text-[9px] font-extrabold text-amber-800 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5 w-max mt-1">Pembina: {memberInfo.pembina}</span>
+                                            )}
+                                          </div>
+                                          <button
+                                            onClick={() => handleRemoveGroupMember(group.id, memberName)}
+                                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                            title="Keluarkan dari Group"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 </div>
 
