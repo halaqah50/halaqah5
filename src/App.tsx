@@ -404,6 +404,13 @@ export default function App() {
   }>({});
   const [isSubmittingPembinaAttendance, setIsSubmittingPembinaAttendance] = useState(false);
   const [pembinaSessionId, setPembinaSessionId] = useState('Pertemuan 1');
+  const [pembinaAttendanceDate, setPembinaAttendanceDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
   // Filters for Monitoring Dashboard
   const [filterDate, setFilterDate] = useState('');
@@ -864,16 +871,19 @@ export default function App() {
 
     setIsSubmittingPembinaAttendance(true);
     try {
-      const today = new Date();
-      const dateString = today.toLocaleDateString('id-ID', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      });
+      const now = new Date();
+      const parts = pembinaAttendanceDate.split('-');
+      const y = parts[0];
+      const m = parts[1];
+      const d = parts[2];
+      const dateString = `${d}/${m}/${y}`;
+      
+      const timeStr = now.toLocaleTimeString('id-ID', { hour12: false });
+      const timestampStr = `${d}/${m}/${y} ${timeStr}`;
 
       const newRecords = Object.entries(pembinaAttendanceForm).map(([nama, status]) => {
         const payload: AttendancePembina = {
-          timestamp: today.toLocaleString('id-ID'),
+          timestamp: timestampStr,
           nama,
           tanggal: dateString,
           pertemuan: pembinaSessionId,
@@ -2400,9 +2410,12 @@ export default function App() {
                         </div>
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Tanggal Absensi</label>
-                          <div className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl text-slate-700">
-                            {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
-                          </div>
+                          <input
+                            type="date"
+                            value={pembinaAttendanceDate}
+                            onChange={(e) => setPembinaAttendanceDate(e.target.value)}
+                            className="w-full rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-900 font-semibold cursor-pointer border border-slate-200 text-slate-800 bg-white shadow-sm"
+                          />
                         </div>
                       </div>
 
