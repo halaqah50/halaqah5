@@ -35,6 +35,7 @@ export interface Group {
   name: string;
   createdAt: string;
   memberNames: string[];
+  pembinaNames?: string[];
 }
 
 export interface AppState {

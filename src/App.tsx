@@ -395,6 +395,7 @@ export default function App() {
   // Group Management UI states
   const [newGroupName, setNewGroupName] = useState('');
   const [groupInvites, setGroupInvites] = useState<Record<string, string>>({});
+  const [groupPembinaInvites, setGroupPembinaInvites] = useState<Record<string, string>>({});
 
   // Session state for current Presence Scanner
   const [sessionId, setSessionId] = useState('Pertemuan 1');
@@ -989,6 +990,70 @@ export default function App() {
 
     playSoundEffect('click');
     showToast(`Group "${groupName}" berhasil dihapus.`);
+  };
+
+  // Invite Pembina into group
+  const handleInvitePembinaToGroup = (groupId: string, pembinaNama: string) => {
+    if (!pembinaNama) {
+      alert('Silakan pilih Pembina terlebih dahulu.');
+      return;
+    }
+
+    setState(s => {
+      const updatedGroups = (s.groups || []).map(g => {
+        if (g.id === groupId) {
+          const currentPembina = g.pembinaNames || [];
+          if (currentPembina.includes(pembinaNama)) {
+            return g;
+          }
+          return {
+            ...g,
+            pembinaNames: [...currentPembina, pembinaNama]
+          };
+        }
+        return g;
+      });
+
+      return {
+        ...s,
+        groups: updatedGroups
+      };
+    });
+
+    setGroupPembinaInvites(prev => ({
+      ...prev,
+      [groupId]: ''
+    }));
+
+    playSoundEffect('success');
+    showToast(`Pembina "${pembinaNama}" berhasil ditambahkan ke group!`);
+  };
+
+  // Remove Pembina from group
+  const handleRemoveGroupPembina = (groupId: string, pembinaNama: string) => {
+    const confirm = window.confirm(`Apakah Anda yakin ingin mengeluarkan pembina "${pembinaNama}" dari group ini?`);
+    if (!confirm) return;
+
+    setState(s => {
+      const updatedGroups = (s.groups || []).map(g => {
+        if (g.id === groupId) {
+          const currentPembina = g.pembinaNames || [];
+          return {
+            ...g,
+            pembinaNames: currentPembina.filter(n => n !== pembinaNama)
+          };
+        }
+        return g;
+      });
+
+      return {
+        ...s,
+        groups: updatedGroups
+      };
+    });
+
+    playSoundEffect('click');
+    showToast(`Pembina "${pembinaNama}" dikeluarkan dari group.`);
   };
 
   // Add Pembina Attendance list session
@@ -2798,14 +2863,35 @@ export default function App() {
                             <div key={group.id} className="border border-slate-200 rounded-2xl p-5 hover:shadow-xs transition-shadow flex flex-col gap-4 bg-white">
                               {/* Header Card Group */}
                               <div className="flex justify-between items-start border-b border-slate-100 pb-3">
-                                <div>
-                                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-extrabold text-slate-900 flex flex-wrap items-center gap-2">
                                     <span>{group.name}</span>
                                     <span className="px-2 py-0.5 text-[9px] font-extrabold text-blue-900 bg-blue-50 border border-blue-100 rounded">
                                       {group.memberNames.length} Anggota
                                     </span>
                                   </h4>
                                   <span className="text-[10px] text-slate-405 font-bold mt-1 block"> dibuat pada {group.createdAt}</span>
+
+                                  {/* List Pembina Group */}
+                                  <div className="flex flex-wrap gap-1.5 mt-2.5 items-center">
+                                    <span className="text-[10px] font-bold text-slate-500 mr-1">Pembina:</span>
+                                    {(!group.pembinaNames || group.pembinaNames.length === 0) ? (
+                                      <span className="text-[10px] text-slate-400 italic">Belum ada Pembina di-map</span>
+                                    ) : (
+                                      group.pembinaNames.map((pName) => (
+                                        <span key={pName} className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-extrabold text-indigo-900 bg-indigo-50 border border-indigo-100 rounded-lg">
+                                          <span>{pName}</span>
+                                          <button
+                                            onClick={() => handleRemoveGroupPembina(group.id, pName)}
+                                            className="text-indigo-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer font-extrabold text-xs"
+                                            title="Keluarkan Pembina"
+                                          >
+                                            &times;
+                                          </button>
+                                        </span>
+                                      ))
+                                    )}
+                                  </div>
                                 </div>
                                 <button
                                   onClick={() => handleDeleteGroup(group.id, group.name)}
@@ -2816,30 +2902,61 @@ export default function App() {
                                 </button>
                               </div>
 
-                              {/* Invite Form Section */}
-                              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex flex-col md:flex-row gap-3 items-center">
-                                <div className="flex-1 w-full flex flex-col gap-1.5">
+                              {/* Invite Form Section (Members and Pembina side-by-side) */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 border border-slate-100 rounded-xl p-4">
+                                {/* Column 1: Invite Members */}
+                                <div className="flex flex-col gap-2">
                                   <label className="text-[9px] font-extrabold text-blue-900 uppercase tracking-widest block">Undang Anggota Halaqah</label>
-                                  <select
-                                    value={activeInviteValue}
-                                    onChange={(e) => setGroupInvites(prev => ({ ...prev, [group.id]: e.target.value }))}
-                                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-950 cursor-pointer"
-                                  >
-                                    <option value="">-- Pilih Anggota Halaqah --</option>
-                                    {availableMembers.map((m) => (
-                                      <option key={m.nama} value={m.nama}>
-                                        {m.nama} (ID: {m.nomorWA || '-'})
-                                      </option>
-                                    ))}
-                                  </select>
+                                  <div className="flex gap-2 items-center">
+                                    <select
+                                      value={activeInviteValue}
+                                      onChange={(e) => setGroupInvites(prev => ({ ...prev, [group.id]: e.target.value }))}
+                                      className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-950 cursor-pointer"
+                                    >
+                                      <option value="">-- Pilih Anggota --</option>
+                                      {availableMembers.map((m) => (
+                                        <option key={m.nama} value={m.nama}>
+                                          {m.nama} (ID: {m.nomorWA || '-'})
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      onClick={() => handleInviteToGroup(group.id, activeInviteValue)}
+                                      className="inline-flex items-center gap-1 bg-blue-900 hover:bg-blue-950 text-white font-extrabold px-3 py-2 text-xs rounded-lg transition-all cursor-pointer shadow-sm hover:scale-[1.03] active:scale-[0.97]"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>Undang</span>
+                                    </button>
+                                  </div>
                                 </div>
-                                <button
-                                  onClick={() => handleInviteToGroup(group.id, activeInviteValue)}
-                                  className="w-full md:w-auto self-end inline-flex items-center gap-1.5 bg-blue-900 hover:bg-blue-950 text-white font-extrabold px-4 py-2 text-xs rounded-lg transition-all cursor-pointer shadow-sm hover:scale-[1.03] active:scale-[0.97]"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>Undang</span>
-                                </button>
+
+                                {/* Column 2: Invite Pembina */}
+                                <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-4">
+                                  <label className="text-[9px] font-extrabold text-indigo-900 uppercase tracking-widest block">Undang Pembina (Bisa &gt; 1)</label>
+                                  <div className="flex gap-2 items-center">
+                                    <select
+                                      value={groupPembinaInvites[group.id] || ''}
+                                      onChange={(e) => setGroupPembinaInvites(prev => ({ ...prev, [group.id]: e.target.value }))}
+                                      className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:border-indigo-950 cursor-pointer"
+                                    >
+                                      <option value="">-- Pilih Pembina --</option>
+                                      {state.pembina
+                                        .filter(p => !(group.pembinaNames || []).includes(p.nama))
+                                        .map((p) => (
+                                          <option key={p.nama} value={p.nama}>
+                                            {p.nama}
+                                          </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                      onClick={() => handleInvitePembinaToGroup(group.id, groupPembinaInvites[group.id] || '')}
+                                      className="inline-flex items-center gap-1 bg-indigo-900 hover:bg-indigo-950 text-white font-extrabold px-3 py-2 text-xs rounded-lg transition-all cursor-pointer shadow-sm hover:scale-[1.03] active:scale-[0.97]"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>Undang</span>
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
 
                               {/* Group Member List Entries */}
