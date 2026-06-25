@@ -37,12 +37,22 @@ export interface Group {
   memberNames: string[];
 }
 
+export interface ActivityLog {
+  id: string;
+  timestamp: string;
+  username: string;
+  role: string;
+  actionType: string;
+  description: string;
+}
+
 export interface AppState {
   members: Member[];
   attendance: Attendance[];
   pembina: Pembina[];
   attendancePembina: AttendancePembina[];
   groups?: Group[];
+  activityLogs?: ActivityLog[];
   spreadsheetId: string | null;
   isLoading: boolean;
   error: string | null;

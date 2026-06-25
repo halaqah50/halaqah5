@@ -323,17 +323,63 @@ function doPost(e) {
 }
 `;
 
+const getUserInitials = (name: string) => {
+  if (!name) return 'U';
+  return name.trim().charAt(0).toUpperCase();
+};
+
+const getUserColorClass = (name: string) => {
+  if (!name) return 'bg-blue-900';
+  const colors = [
+    'bg-rose-600',
+    'bg-emerald-600',
+    'bg-indigo-600',
+    'bg-amber-600',
+    'bg-cyan-600',
+    'bg-purple-600',
+    'bg-blue-600',
+    'bg-fuchsia-600',
+    'bg-teal-600'
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+};
+
+const USERS_DATABASE = [
+  { username: 'cm3105', password: 'dakwah', role: 'super admin', displayName: 'cm3105' },
+  { username: 'widy', password: 'dakwah3105', role: 'admin', displayName: 'widy' },
+  { username: 'andy', password: 'dakwah3105', role: 'admin', displayName: 'andy' },
+  { username: 'faisal', password: 'dakwah3105', role: 'admin', displayName: 'faisal' },
+  { username: 'sholeh', password: 'dakwah3105', role: 'admin', displayName: 'sholeh' },
+  { username: 'khalid', password: 'dakwah3105', role: 'admin', displayName: 'khalid' },
+  { username: 'erwin', password: 'dakwah3105', role: 'admin', displayName: 'erwin' },
+  { username: 'didik', password: 'dakwah3105', role: 'admin', displayName: 'didik' },
+];
+
 export default function App() {
-  // Auth state - Secure admin login with cm3105 / dakwah
+  // Auth state - Secure admin login with custom levels
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const [user, setUser] = useState<any>(() => {
     const saved = localStorage.getItem('halaqah_logged_in');
+    const savedUser = localStorage.getItem('halaqah_logged_in_user');
+    if (saved === 'true' && savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (e) {
+        // Fallback
+      }
+    }
     return saved === 'true' ? {
-      displayName: 'Admin HALAQAH 5.0',
-      email: 'admin@halaqah.local',
+      username: 'cm3105',
+      displayName: 'cm3105',
+      role: 'super admin',
       photoURL: null
     } : null;
   });
@@ -353,13 +399,14 @@ export default function App() {
     pembina: [],
     attendancePembina: [],
     groups: [],
+    activityLogs: [],
     spreadsheetId: 'Local Device',
     isLoading: true,
     error: null
   });
 
   // UI state
-  const [activeTab, setActiveTab ] = useState<'dashboard' | 'scan' | 'members' | 'pembina' | 'sheets' | 'group'>('dashboard');
+  const [activeTab, setActiveTab ] = useState<'dashboard' | 'scan' | 'members' | 'pembina' | 'sheets' | 'group' | 'logs'>('dashboard');
   const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => {
     const stored = localStorage.getItem('halaqah_apps_script_url');
     if (stored && stored.trim() !== '') return stored;
@@ -425,6 +472,10 @@ export default function App() {
   const [filterPembina, setFilterPembina] = useState('Semua');
   const [searchMemberQuery, setSearchMemberQuery] = useState('');
 
+  // Filters and queries for Log Activity Tab
+  const [logSearchQuery, setLogSearchQuery] = useState('');
+  const [logFilterType, setLogFilterType] = useState('ALL');
+
   // Audio confirm feedback
   const playSoundEffect = (type: 'success' | 'click' | 'info' | 'error') => {
     try {
@@ -481,6 +532,7 @@ export default function App() {
             pembina: parsed.pembina || [],
             attendancePembina: parsed.attendancePembina || [],
             groups: parsed.groups || [],
+            activityLogs: parsed.activityLogs || [],
             spreadsheetId: 'Local Device',
             isLoading: false,
             error: null
@@ -510,6 +562,7 @@ export default function App() {
       attendance: DEFAULT_ATTENDANCE,
       attendancePembina: DEFAULT_ATTENDANCE_PEMBINA,
       groups: [],
+      activityLogs: [],
       spreadsheetId: 'Local Device',
       isLoading: false,
       error: null
@@ -546,13 +599,40 @@ export default function App() {
           pembina: state.pembina,
           attendance: state.attendance,
           attendancePembina: state.attendancePembina,
-          groups: state.groups || []
+          groups: state.groups || [],
+          activityLogs: state.activityLogs || []
         }));
       } catch (e) {
         console.error('Error saving state to localStorage:', e);
       }
     }
-  }, [state.members, state.pembina, state.attendance, state.attendancePembina, state.groups, state.isLoading]);
+  }, [state.members, state.pembina, state.attendance, state.attendancePembina, state.groups, state.activityLogs, state.isLoading]);
+
+  // Activity logging helper
+  const addLogActivity = (actionType: string, description: string, optUser?: { username: string, role: string }) => {
+    const now = new Date();
+    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const y = now.getFullYear();
+    const timeStr = now.toLocaleTimeString('id-ID', { hour12: false });
+    const timestampStr = `${d}/${m}/${y} ${timeStr}`;
+
+    const activeUser = optUser || user;
+
+    const newLog = {
+      id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      timestamp: timestampStr,
+      username: activeUser?.username || 'Guest',
+      role: activeUser?.role || 'Guest',
+      actionType,
+      description
+    };
+
+    setState(s => ({
+      ...s,
+      activityLogs: [newLog, ...(s.activityLogs || [])]
+    }));
+  };
 
   // Custom secure credentials check login
   const handleCustomLogin = (e: React.FormEvent) => {
@@ -561,17 +641,27 @@ export default function App() {
     setIsLoggingIn(true);
 
     setTimeout(() => {
-      if (username.trim() === 'cm3105' && password === 'dakwah') {
-        localStorage.setItem('halaqah_logged_in', 'true');
-        setUser({
-          displayName: 'Admin HALAQAH 5.0',
-          email: 'admin@halaqah.local',
+      const u = username.trim();
+      const p = password;
+      const matchedUser = USERS_DATABASE.find(item => item.username === u && item.password === p);
+
+      if (matchedUser) {
+        const userObj = {
+          username: matchedUser.username,
+          displayName: matchedUser.displayName,
+          role: matchedUser.role,
           photoURL: null
-        });
+        };
+        localStorage.setItem('halaqah_logged_in', 'true');
+        localStorage.setItem('halaqah_logged_in_user', JSON.stringify(userObj));
+        setUser(userObj);
         setToken('offline-token');
         setNeedsAuth(false);
         playSoundEffect('success');
-        showToast('Selamat Datang di Halaqah 5.0!');
+        showToast(`Selamat Datang, ${matchedUser.displayName}!`);
+        
+        // Log activity (passing userObj because user state might not be updated immediately in this cycle)
+        addLogActivity('Login', `User ${matchedUser.username} (${matchedUser.role}) berhasil masuk ke dalam aplikasi.`, userObj);
       } else {
         setLoginError('User atau Password salah!');
         playSoundEffect('error');
@@ -583,7 +673,11 @@ export default function App() {
   // Logout from system
   const handleLogout = () => {
     playSoundEffect('click');
+    if (user) {
+      addLogActivity('Logout', `User ${user.username} (${user.role}) keluar dari aplikasi.`);
+    }
     localStorage.removeItem('halaqah_logged_in');
+    localStorage.removeItem('halaqah_logged_in_user');
     setUser(null);
     setToken(null);
     setNeedsAuth(true);
@@ -821,6 +915,8 @@ export default function App() {
         members: [memberObj, ...s.members]
       }));
 
+      addLogActivity('Tambah Anggota', `Menambahkan anggota baru bernama "${memberObj.nama}" dengan Pembina: "${memberObj.pembina || '-'}"`);
+
       setNewMemberForm({ nama: '', alamat: '', nomorWA: '', pembina: '' } as any);
       playSoundEffect('success');
       showToast(`Anggota "${memberObj.nama}" berhasil ditambahkan!`);
@@ -860,6 +956,8 @@ export default function App() {
         ...s,
         pembina: [...s.pembina, pembinaObj]
       }));
+
+      addLogActivity('Tambah Pembina', `Menambahkan pembina baru bernama "${pembinaObj.nama}"`);
 
       // Update Pembina Attendance checklist form too
       setPembinaAttendanceForm(prev => ({
@@ -910,6 +1008,8 @@ export default function App() {
       groups: [...(s.groups || []), groupObj]
     }));
 
+    addLogActivity('Buat Group', `Membuat group baru bernama "${groupObj.name}"`);
+
     setNewGroupName('');
     playSoundEffect('success');
     showToast(`Group "${groupObj.name}" berhasil dibuat!`);
@@ -942,6 +1042,9 @@ export default function App() {
       };
     });
 
+    const grp = (state.groups || []).find(g => g.id === groupId);
+    addLogActivity('Undang Anggota Group', `Mengundang "${memberNama}" masuk ke dalam group "${grp?.name || 'Group'}"`);
+
     setGroupInvites(prev => ({
       ...prev,
       [groupId]: ''
@@ -973,6 +1076,9 @@ export default function App() {
       };
     });
 
+    const grp = (state.groups || []).find(g => g.id === groupId);
+    addLogActivity('Keluarkan Anggota Group', `Mengeluarkan "${memberNama}" dari group "${grp?.name || 'Group'}"`);
+
     playSoundEffect('click');
     showToast(`Anggota "${memberNama}" dikeluarkan dari group.`);
   };
@@ -986,6 +1092,8 @@ export default function App() {
       ...s,
       groups: (s.groups || []).filter(g => g.id !== groupId)
     }));
+
+    addLogActivity('Hapus Group', `Menghapus group harian "${groupName}"`);
 
     playSoundEffect('click');
     showToast(`Group "${groupName}" berhasil dihapus.`);
@@ -1031,6 +1139,8 @@ export default function App() {
         ...s,
         attendancePembina: [...newRecords, ...s.attendancePembina]
       }));
+
+      addLogActivity('Presensi Pembina', `Menyimpan ${newRecords.length} daftar hadir Pembina untuk pertemuan "${pembinaSessionId}"`);
 
       playSoundEffect('success');
       showToast(`Kehadiran Pembina untuk "${pembinaSessionId}" berhasil disimpan!`);
@@ -1090,6 +1200,8 @@ export default function App() {
         attendance: [attendanceRecord, ...s.attendance]
       }));
 
+      addLogActivity('Scan Presensi QR', `Scan QR Berhasil: "${attendanceRecord.nama}" hadir di pertemuan "${attendanceRecord.pertemuan}"`);
+
       showToast(`Check-In Berhasil: ${attendanceRecord.nama} hadir di ${sessionId}!`);
       playSoundEffect('success');
       sendToAppsScript('addAttendance', attendanceRecord);
@@ -1135,6 +1247,8 @@ export default function App() {
         attendance: [attendanceRecord, ...s.attendance]
       }));
 
+      addLogActivity('Presensi Manual', `Mencatat manual "${attendanceRecord.nama}" (${attendanceRecord.status}) pada pertemuan "${attendanceRecord.pertemuan}"`);
+
       showToast(`Pencatatan Sukses: ${memberName} (${status}) di ${sessionId}!`);
       playSoundEffect('success');
       sendToAppsScript('addAttendance', attendanceRecord);
@@ -1150,6 +1264,9 @@ export default function App() {
         ...s,
         attendance: s.attendance.filter(att => !(att.timestamp === timestamp && att.nama === nama))
       }));
+
+      addLogActivity('Hapus Presensi', `Menghapus presensi "${nama}" pada timestamp ${timestamp}`);
+
       showToast(`Presensi "${nama}" berhasil dihapus secara lokal.`);
       playSoundEffect('click');
     }
@@ -1169,13 +1286,17 @@ export default function App() {
             members: newState.members,
             pembina: newState.pembina,
             attendance: newState.attendance,
-            attendancePembina: newState.attendancePembina
+            attendancePembina: newState.attendancePembina,
+            groups: newState.groups || [],
+            activityLogs: newState.activityLogs || []
           }));
         } catch (e) {
           console.error('Error saving state to localStorage:', e);
         }
         return newState;
       });
+
+      addLogActivity('Kosongkan Presensi', 'Mengosongkan semua log presensi real-time anggota');
 
       showToast('Seluruh log presensi berhasil dikosongkan.');
       playSoundEffect('error');
@@ -1516,11 +1637,14 @@ export default function App() {
               {user.photoURL ? (
                 <img src={user.photoURL} alt="User Avatar" className="w-5 h-5 rounded-md object-cover" />
               ) : (
-                <div className="w-5 h-5 bg-blue-900 text-white rounded-md text-[10px] font-bold flex items-center justify-center">
-                  H
+                <div className={`w-5 h-5 ${getUserColorClass(user.displayName)} text-white rounded-md text-[10px] font-extrabold flex items-center justify-center uppercase shadow-xs`}>
+                  {getUserInitials(user.displayName)}
                 </div>
               )}
-              <span className="text-xs font-semibold text-slate-700 truncate max-w-[120px]">{user.displayName || user.email}</span>
+              <div className="flex flex-col text-left">
+                <span className="text-[11px] font-extrabold text-slate-800 leading-tight truncate max-w-[120px]">{user.displayName || user.email}</span>
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider leading-none">{user.role || 'user'}</span>
+              </div>
             </div>
           )}
 
@@ -1637,11 +1761,21 @@ export default function App() {
               Group ({state.groups?.length || 0})
             </button>
             <button
+              onClick={() => { setActiveTab('logs'); playSoundEffect('click'); }}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-250 cursor-pointer ${
+                activeTab === 'logs' 
+                  ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
+                  : 'text-slate-600 hover:text-blue-900 hover:bg-white/50'
+              }`}
+            >
+              Log Activity
+            </button>
+            <button
               onClick={() => { setActiveTab('sheets'); playSoundEffect('click'); }}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-250 flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'sheets' 
                   ? 'bg-emerald-700 text-white font-extrabold shadow-sm' 
-                  : 'text-emerald-750 hover:bg-emerald-50/50'
+                  : 'text-emerald-750 hover:bg-emerald-55/50'
               }`}
             >
               <div className={`w-1.5 h-1.5 rounded-full ${appsScriptUrl ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'}`} />
@@ -1660,6 +1794,7 @@ export default function App() {
                   {activeTab === 'members' && `👥 Anggota (${state.members.length})`}
                   {activeTab === 'pembina' && `🎓 Pembina (${state.pembina.length})`}
                   {activeTab === 'group' && `👥 Group (${state.groups?.length || 0})`}
+                  {activeTab === 'logs' && '📝 Log Activity'}
                   {activeTab === 'sheets' && '🟢 Google Sheets Sync'}
                 </span>
               </div>
@@ -1744,6 +1879,17 @@ export default function App() {
                   >
                     <span>Group ({state.groups?.length || 0})</span>
                     {activeTab === 'group' && <Check className="w-4 h-4 text-white" />}
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('logs'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
+                    className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer text-left flex items-center justify-between ${
+                      activeTab === 'logs' 
+                        ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
+                        : 'text-slate-600 hover:text-blue-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <span>Log Activity</span>
+                    {activeTab === 'logs' && <Check className="w-4 h-4 text-white" />}
                   </button>
                   <button
                     onClick={() => { setActiveTab('sheets'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
@@ -2417,6 +2563,7 @@ export default function App() {
                                           members: updatedMembers
                                         };
                                       });
+                                      addLogActivity('Hubungkan Pembina', `Menghubungkan pembina "${newPembinaName || '-'}" ke anggota "${member.nama}"`);
                                       playSoundEffect('click');
                                       showToast(`Pembina untuk "${member.nama}" sukses di-map ke "${newPembinaName || '-'}"!`);
                                     }}
@@ -2883,6 +3030,163 @@ export default function App() {
                   </div>
                 </div>
 
+              </div>
+            )}
+
+            {/* ----------------- TAB: LOG ACTIVITY ----------------- */}
+            {activeTab === 'logs' && (
+              <div className="flex flex-col gap-6 animate-fade-in select-text">
+                <div className="glass-card bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-6">
+                  {/* Title & Stats */}
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-150 pb-5">
+                    <div>
+                      <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Log Aktivitas Pengguna</h3>
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                        Catatan riwayat aktivitas real-time dari seluruh Admin yang mengakses sistem Halaqah 5.0.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 text-[10px] font-extrabold text-blue-900 bg-blue-50 border border-blue-100 rounded-lg">
+                        Total: {(state.activityLogs || []).length} Log
+                      </span>
+                      {user?.role === 'super admin' && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Apakah Anda yakin ingin menghapus seluruh catatan aktivitas? Tindakan ini tidak dapat dibatalkan.')) {
+                              setState(s => ({ ...s, activityLogs: [] }));
+                              showToast('Semua catatan aktivitas berhasil dibersihkan.');
+                            }
+                          }}
+                          className="px-3 py-1 text-[10px] font-extrabold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Bersihkan Log
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Filters & Search Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2 relative">
+                      <input
+                        type="text"
+                        placeholder="Cari aktivitas, deskripsi, atau nama admin..."
+                        value={logSearchQuery}
+                        onChange={(e) => setLogSearchQuery(e.target.value)}
+                        className="w-full glass-input border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900 font-semibold bg-white"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    </div>
+                    <div>
+                      <select
+                        value={logFilterType}
+                        onChange={(e) => setLogFilterType(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-blue-950 cursor-pointer"
+                      >
+                        <option value="ALL">Semua Aktivitas</option>
+                        <option value="Login">Login</option>
+                        <option value="Logout">Logout</option>
+                        <option value="Tambah Anggota">Tambah Anggota</option>
+                        <option value="Tambah Pembina">Tambah Pembina</option>
+                        <option value="Hubungkan Pembina">Hubungkan Pembina</option>
+                        <option value="Buat Group">Buat Group</option>
+                        <option value="Undang Anggota Group">Undang Anggota Group</option>
+                        <option value="Keluarkan Anggota Group">Keluarkan Anggota Group</option>
+                        <option value="Hapus Group">Hapus Group</option>
+                        <option value="Presensi Manual">Presensi Manual</option>
+                        <option value="Scan Presensi QR">Scan Presensi QR</option>
+                        <option value="Presensi Pembina">Presensi Pembina</option>
+                        <option value="Hapus Presensi">Hapus Presensi</option>
+                        <option value="Kosongkan Presensi">Kosongkan Presensi</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Log List View */}
+                  <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center w-16">No</th>
+                            <th className="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-40">Waktu</th>
+                            <th className="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-48">Pengguna</th>
+                            <th className="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-40">Tipe Aktivitas</th>
+                            <th className="py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Detail Aktivitas</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {(() => {
+                            const rawLogs = state.activityLogs || [];
+                            const filtered = rawLogs.filter(item => {
+                              const matchSearch = 
+                                item.username.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+                                item.role.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+                                item.actionType.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+                                item.description.toLowerCase().includes(logSearchQuery.toLowerCase());
+                              
+                              const matchFilter = logFilterType === 'ALL' || item.actionType === logFilterType;
+                              
+                              return matchSearch && matchFilter;
+                            });
+
+                            if (filtered.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={5} className="py-12 text-center text-slate-400 font-semibold text-xs">
+                                    Tidak ada catatan aktivitas yang cocok dengan pencarian atau filter Anda.
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            return filtered.map((item, index) => {
+                              // Custom Badge styles
+                              let typeColor = 'bg-slate-100 text-slate-800 border-slate-200';
+                              if (item.actionType === 'Login') {
+                                typeColor = 'bg-emerald-50 text-emerald-800 border-emerald-100';
+                              } else if (item.actionType === 'Logout') {
+                                typeColor = 'bg-amber-50 text-amber-800 border-amber-100';
+                              } else if (item.actionType.includes('Hapus') || item.actionType.includes('Kosongkan') || item.actionType.includes('Keluarkan')) {
+                                typeColor = 'bg-rose-50 text-rose-800 border-rose-100';
+                              } else if (item.actionType.includes('Tambah') || item.actionType.includes('Buat')) {
+                                typeColor = 'bg-blue-50 text-blue-800 border-blue-100';
+                              } else if (item.actionType.includes('Presensi') || item.actionType.includes('Scan')) {
+                                typeColor = 'bg-violet-50 text-violet-800 border-violet-100';
+                              }
+
+                              return (
+                                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="py-3 px-4 text-center text-slate-400 font-semibold text-xs">{index + 1}</td>
+                                  <td className="py-3 px-4 font-mono text-[10px] text-slate-500 font-bold leading-tight">{item.timestamp}</td>
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-5 h-5 rounded ${getUserColorClass(item.username)} text-white font-extrabold text-[9px] flex items-center justify-center uppercase`}>
+                                        {getUserInitials(item.username)}
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-slate-800">{item.username}</span>
+                                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">{item.role}</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <span className={`inline-block px-2.5 py-1 text-[9px] font-extrabold border rounded-lg ${typeColor}`}>
+                                      {item.actionType}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 text-xs font-bold text-slate-700 leading-normal">
+                                    {item.description}
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
