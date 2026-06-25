@@ -355,7 +355,7 @@ const USERS_DATABASE = [
   { username: 'andy', password: 'dakwah3105', role: 'admin', displayName: 'andy' },
   { username: 'faisal', password: 'dakwah3105', role: 'admin', displayName: 'faisal' },
   { username: 'sholeh', password: 'dakwah3105', role: 'admin', displayName: 'sholeh' },
-  { username: 'khalid', password: 'dakwah3105', role: 'admin', displayName: 'khalid' },
+  { username: 'kholid', password: 'dakwah3105', role: 'admin', displayName: 'kholid' },
   { username: 'erwin', password: 'dakwah3105', role: 'admin', displayName: 'erwin' },
   { username: 'didik', password: 'dakwah3105', role: 'admin', displayName: 'didik' },
 ];
