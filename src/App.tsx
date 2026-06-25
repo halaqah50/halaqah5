@@ -1649,14 +1649,6 @@ export default function App() {
           )}
 
           <button
-            onClick={handleResetDatabase}
-            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200 cursor-pointer"
-            title="Reset Database ke Bawaan"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-
-          <button
             onClick={handleLogout}
             className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200 cursor-pointer"
             title="Keluar dari Aplikasi"
