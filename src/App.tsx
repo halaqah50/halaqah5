@@ -25,7 +25,9 @@ import {
   ChevronDown,
   Trash2,
   Menu,
-  X
+  X,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 import { Member, Attendance, Pembina, AttendancePembina, AppState } from './types';
@@ -351,6 +353,7 @@ const getUserColorClass = (name: string) => {
 
 const USERS_DATABASE = [
   { username: 'cm3105', password: 'dakwah', role: 'super admin', displayName: 'cm3105' },
+  { username: 'rovi', password: 'dakwah3105', role: 'super admin', displayName: 'rovi' },
   { username: 'widy', password: 'dakwah3105', role: 'admin', displayName: 'widy' },
   { username: 'andy', password: 'dakwah3105', role: 'admin', displayName: 'andy' },
   { username: 'faisal', password: 'dakwah3105', role: 'admin', displayName: 'faisal' },
@@ -364,6 +367,7 @@ export default function App() {
   // Auth state - Secure admin login with custom levels
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const [user, setUser] = useState<any>(() => {
@@ -1543,14 +1547,27 @@ export default function App() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password"
-                className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-800 font-semibold text-sm px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 transition-colors placeholder:text-slate-400 outline-none"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Masukkan password"
+                  className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-800 font-semibold text-sm pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:border-blue-900 focus:ring-1 focus:ring-blue-900 transition-colors placeholder:text-slate-400 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPassword(!showPassword);
+                    playSoundEffect('click');
+                  }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-blue-900 hover:bg-slate-100 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                  title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <button
