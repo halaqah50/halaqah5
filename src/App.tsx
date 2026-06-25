@@ -181,13 +181,33 @@ function doGet(e) {
         }
       }
     }
+
+    // 5. Activity Logs
+    var logsSheet = sheet.getSheetByName("Activity_Logs");
+    var activityLogs = [];
+    if (logsSheet) {
+      var rows = logsSheet.getDataRange().getValues();
+      for (var i = 1; i < rows.length; i++) {
+        if (rows[i][0] || rows[i][1]) {
+          activityLogs.push({
+            id: rows[i][0] ? rows[i][0].toString() : "",
+            timestamp: rows[i][1] ? rows[i][1].toString() : "",
+            username: rows[i][2] ? rows[i][2].toString() : "",
+            role: rows[i][3] ? rows[i][3].toString() : "",
+            actionType: rows[i][4] ? rows[i][4].toString() : "",
+            description: rows[i][5] ? rows[i][5].toString() : ""
+          });
+        }
+      }
+    }
     
     var output = {
       success: true,
       members: members,
       attendance: attendance,
       pembina: pembina,
-      attendancePembina: attendancePembina
+      attendancePembina: attendancePembina,
+      activityLogs: activityLogs
     };
     
     return ContentService.createTextOutput(JSON.stringify(output))
@@ -262,6 +282,14 @@ function doPost(e) {
     }
     ws.appendRow([data.timestamp, data.nama, data.tanggal, data.pertemuan, data.status]);
     
+  } else if (action === "addLog") {
+    var ws = sheet.getSheetByName("Activity_Logs");
+    if (!ws) {
+      ws = sheet.insertSheet("Activity_Logs");
+      ws.appendRow(["ID", "Timestamp", "Username", "Role", "Action Type", "Description"]);
+    }
+    ws.appendRow([data.id, data.timestamp, data.username, data.role, data.actionType, data.description]);
+    
   } else if (action === "bulkUpload") {
     // 1. Members
     var wsM = sheet.getSheetByName("Members");
@@ -316,6 +344,20 @@ function doPost(e) {
     if (data.attendancePembina && data.attendancePembina.length > 0) {
       data.attendancePembina.forEach(function(item) {
         wsAP.appendRow([item.timestamp, item.nama, item.tanggal, item.pertemuan, item.status]);
+      });
+    }
+
+    // 5. Activity Logs
+    var wsL = sheet.getSheetByName("Activity_Logs");
+    if (wsL) {
+      wsL.clear();
+    } else {
+      wsL = sheet.insertSheet("Activity_Logs");
+    }
+    wsL.appendRow(["ID", "Timestamp", "Username", "Role", "Action Type", "Description"]);
+    if (data.activityLogs && data.activityLogs.length > 0) {
+      data.activityLogs.forEach(function(item) {
+        wsL.appendRow([item.id, item.timestamp, item.username, item.role, item.actionType, item.description]);
       });
     }
   }
@@ -636,6 +678,9 @@ export default function App() {
       ...s,
       activityLogs: [newLog, ...(s.activityLogs || [])]
     }));
+
+    // Save to Google Sheet in real-time
+    sendToAppsScript('addLog', newLog);
   };
 
   // Custom secure credentials check login
@@ -821,6 +866,7 @@ export default function App() {
             pembina: Array.isArray(json.pembina) ? json.pembina : s.pembina,
             attendance: Array.isArray(json.attendance) ? json.attendance : s.attendance,
             attendancePembina: Array.isArray(json.attendancePembina) ? json.attendancePembina : s.attendancePembina,
+            activityLogs: Array.isArray(json.activityLogs) ? json.activityLogs : s.activityLogs || [],
             groups: s.groups || [],
             spreadsheetId: 'Google Sheet Terhubung',
             error: null
@@ -855,7 +901,8 @@ export default function App() {
         members: state.members,
         pembina: state.pembina,
         attendance: state.attendance,
-        attendancePembina: state.attendancePembina
+        attendancePembina: state.attendancePembina,
+        activityLogs: state.activityLogs || []
       };
 
       await fetch(appsScriptUrl, {
