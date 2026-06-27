@@ -27,7 +27,8 @@ import {
   Menu,
   X,
   Eye,
-  EyeOff
+  EyeOff,
+  HeartPulse
 } from 'lucide-react';
 
 import { Member, Attendance, Pembina, AttendancePembina, AppState } from './types';
@@ -1228,7 +1229,7 @@ export default function App() {
     );
 
     if (isDuplicate) {
-      showToast(`Atas Nama ${checkName} Sudah Scan Presensi`);
+      showToast(`Atas Nama ${checkName} Sudah Mengisi Presensi (${sessionId})`);
       playSoundEffect('error');
       return;
     }
@@ -1280,7 +1281,7 @@ export default function App() {
     );
 
     if (isDuplicate) {
-      showToast(`Atas Nama ${memberName} Sudah Scan Presensi`);
+      showToast(`Atas Nama ${memberName} Sudah Mengisi Presensi (${sessionId})`);
       playSoundEffect('error');
       return;
     }
@@ -1509,12 +1510,22 @@ export default function App() {
 
     // Filtered presence rate
     let sumPercentage = 0;
+    let totalHadir = 0;
+    let totalIzin = 0;
+    let totalSakit = 0;
+
     individualRecap.forEach(r => {
       sumPercentage += r.persentase;
+      totalHadir += r.hadir;
+      totalIzin += r.izin;
+      totalSakit += r.sakit;
     });
+    
+    // Formula requested: (Total Anggota) - (Total hadir + total izin + total sakit)
+    const totalAlpha = Math.max(0, totalM - (totalHadir + totalIzin + totalSakit));
     const avgPercentage = individualRecap.length > 0 ? Math.round(sumPercentage / individualRecap.length) : 0;
 
-    return { totalM, totalP, avgPercentage };
+    return { totalM, totalP, avgPercentage, totalHadir, totalIzin, totalSakit, totalAlpha };
   }, [state.members, state.pembina, individualRecap]);
 
   // Recharts Attendance Trend generator
@@ -2076,37 +2087,128 @@ export default function App() {
                 </div>
 
                 {/* 2. Bento Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:grid-cols-3">
-                  <div className="glass-card print:border print:border-slate-350 p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between bg-white">
-                    <div>
-                      <span className="text-[10px] text-blue-900 uppercase tracking-widest font-extrabold block">Total Anggota</span>
-                      <h3 className="text-3xl font-extrabold text-slate-900 mt-1">{dashboardStats.totalM}</h3>
-                      <span className="text-[10px] text-slate-500 mt-1 block font-semibold text-shadow-xs">Bimbingan Halaqah</span>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 text-blue-900 flex items-center justify-center no-print">
-                      <Users className="w-5 h-5 stroke-[2]" />
-                    </div>
-                  </div>
-
-                  <div className="glass-card print:border print:border-slate-350 p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between bg-white">
-                    <div>
-                      <span className="text-[10px] text-blue-900 uppercase tracking-widest font-extrabold block">Tingkat Kehadiran</span>
-                      <h3 className="text-3xl font-extrabold text-blue-900 mt-1">{dashboardStats.avgPercentage}%</h3>
-                      <span className="text-[10px] text-blue-800 mt-1 block font-bold uppercase tracking-wider">Presensi Rerata</span>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200/60 text-blue-900 flex items-center justify-center no-print">
-                      <UserCheck className="w-5 h-5 stroke-[2]" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 print:grid-cols-3">
+                  {/* Card: Total Anggota */}
+                  <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-900"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Anggota</span>
+                        <h3 className="text-3xl font-black text-slate-900 mt-1 tracking-tight group-hover:text-blue-900 transition-colors">
+                          {dashboardStats.totalM} <span className="text-xs font-bold text-slate-500">Santri</span>
+                        </h3>
+                        <span className="text-[10px] text-slate-500 mt-1 font-semibold">Terdaftar dalam bimbingan halaqah</span>
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-150 text-blue-900 flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-transform duration-300">
+                        <Users className="w-5 h-5 stroke-[2.5]" />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="glass-card print:border print:border-slate-350 p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between bg-white">
-                    <div>
-                      <span className="text-[10px] text-blue-900 uppercase tracking-widest font-extrabold block">Ustadz/Pembina</span>
-                      <h3 className="text-3xl font-extrabold text-slate-900 mt-1">{dashboardStats.totalP}</h3>
-                      <span className="text-[10px] text-slate-500 mt-1 block font-semibold text-shadow-xs">Aktif Mengajar</span>
+                  {/* Card: Tingkat Kehadiran */}
+                  <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-6 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-700"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-blue-800 uppercase tracking-widest">Tingkat Kehadiran</span>
+                        <div className="flex items-baseline gap-1.5 mt-1">
+                          <h3 className="text-3xl font-black text-blue-950 tracking-tight">
+                            {dashboardStats.avgPercentage}%
+                          </h3>
+                        </div>
+                        <span className="text-[10px] text-blue-700 mt-1 font-bold uppercase tracking-wider">Presensi Rerata</span>
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-blue-900 text-white flex items-center justify-center no-print shadow-sm group-hover:scale-105 transition-transform duration-300">
+                        <UserCheck className="w-5 h-5 stroke-[2.5]" />
+                      </div>
                     </div>
-                    <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 text-blue-900 flex items-center justify-center no-print">
-                      <GraduationCap className="w-5 h-5 stroke-[2]" />
+                  </div>
+
+                  {/* Card: Ustadz/Pembina */}
+                  <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-900"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ustadz/Pembina</span>
+                        <h3 className="text-3xl font-black text-slate-900 mt-1 tracking-tight group-hover:text-indigo-900 transition-colors">
+                          {dashboardStats.totalP} <span className="text-xs font-bold text-slate-500">Asatidz</span>
+                        </h3>
+                        <span className="text-[10px] text-slate-500 mt-1 font-semibold">Aktif membina & mengajar</span>
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-indigo-50/40 border border-indigo-100 text-indigo-900 flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-transform duration-300">
+                        <GraduationCap className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2.5 Presence Status Summary Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4">
+                  {/* Card: Total Hadir */}
+                  <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-all duration-300 group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-emerald-700 uppercase tracking-widest font-black block">Total Hadir</span>
+                        <h3 className="text-3xl font-black text-emerald-800 mt-1.5 tracking-tight">
+                          {dashboardStats.totalHadir} <span className="text-xs font-bold text-emerald-600">Santri</span>
+                        </h3>
+                        <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Hadir di Halaqah</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-lg bg-emerald-500 text-white flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-all">
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card: Total Izin */}
+                  <div className="relative overflow-hidden rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-all duration-300 group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-amber-700 uppercase tracking-widest font-black block">Total Izin</span>
+                        <h3 className="text-3xl font-black text-amber-850 mt-1.5 tracking-tight">
+                          {dashboardStats.totalIzin} <span className="text-xs font-bold text-amber-600">Santri</span>
+                        </h3>
+                        <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Keterangan Izin</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-lg bg-amber-500 text-white flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-all">
+                        <CalendarDays className="w-4 h-4 stroke-[2.5]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card: Total Sakit */}
+                  <div className="relative overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-all duration-300 group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-sky-500"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-sky-700 uppercase tracking-widest font-black block">Total Sakit</span>
+                        <h3 className="text-3xl font-black text-sky-850 mt-1.5 tracking-tight">
+                          {dashboardStats.totalSakit} <span className="text-xs font-bold text-sky-600">Santri</span>
+                        </h3>
+                        <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Sedang Sakit</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-lg bg-sky-500 text-white flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-all">
+                        <HeartPulse className="w-4 h-4 stroke-[2.5]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card: Total Alpha */}
+                  <div className="relative overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-all duration-300 group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-rose-700 uppercase tracking-widest font-black block">Total Alpha</span>
+                        <h3 className="text-3xl font-black text-rose-850 mt-1.5 tracking-tight">
+                          {dashboardStats.totalAlpha} <span className="text-xs font-bold text-rose-600">Santri</span>
+                        </h3>
+                        <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Tanpa Keterangan</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-lg bg-rose-500 text-white flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-all">
+                        <X className="w-4 h-4 stroke-[3]" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2342,9 +2444,22 @@ export default function App() {
                           className="w-full glass-select rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-900 font-semibold cursor-pointer border border-slate-200 text-slate-800 bg-white"
                         >
                           <option value="" className="bg-white text-slate-900">-- Pilih Anggota --</option>
-                          {state.members.map((m, mIdx) => (
-                            <option key={m.nama + '-' + mIdx} value={m.nama} className="bg-white text-slate-900">{m.nama}</option>
-                          ))}
+                          {state.members.map((m, mIdx) => {
+                            const isAlreadyPresent = state.attendance.some(
+                              att => att.nama.trim().toLowerCase() === m.nama.trim().toLowerCase() &&
+                                     att.pertemuan.trim().toLowerCase() === sessionId.trim().toLowerCase()
+                            );
+                            return (
+                              <option 
+                                key={m.nama + '-' + mIdx} 
+                                value={m.nama} 
+                                className="bg-white text-slate-900"
+                                disabled={isAlreadyPresent}
+                              >
+                                {m.nama} {isAlreadyPresent ? '(Sudah Presensi)' : ''}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
 
