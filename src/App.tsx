@@ -495,7 +495,6 @@ export default function App() {
   const [manualSearchText, setManualSearchText] = useState('');
   const [manualStatus, setManualStatus] = useState<'Hadir' | 'Izin' | 'Sakit' | 'Alpa'>('Hadir');
   const [scanLogSearch, setScanLogSearch] = useState('');
-  const [scanLogMeetingFilter, setScanLogMeetingFilter] = useState('Semua');
 
   // Attendance Pembina Form
   const [pembinaAttendanceForm, setPembinaAttendanceForm] = useState<{
@@ -521,6 +520,16 @@ export default function App() {
   // Filters and queries for Log Activity Tab
   const [logSearchQuery, setLogSearchQuery] = useState('');
   const [logFilterType, setLogFilterType] = useState('ALL');
+
+  // Real-time Clock State for Presence Scanner
+  const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Audio confirm feedback
   const playSoundEffect = (type: 'success' | 'click' | 'info' | 'error') => {
@@ -1386,11 +1395,25 @@ export default function App() {
   // Compute filtered logs for scanner view
   const filteredScanLogs = useMemo(() => {
     return state.attendance.filter(att => {
-      const matchMeeting = scanLogMeetingFilter === 'Semua' || att.pertemuan.trim().toLowerCase() === scanLogMeetingFilter.trim().toLowerCase();
+      const matchMeeting = att.pertemuan.trim().toLowerCase() === sessionId.trim().toLowerCase();
       const matchSearch = att.nama.toLowerCase().includes(scanLogSearch.toLowerCase());
       return matchMeeting && matchSearch;
     });
-  }, [state.attendance, scanLogMeetingFilter, scanLogSearch]);
+  }, [state.attendance, sessionId, scanLogSearch]);
+
+  // Compute summary stats for the chosen session/meeting
+  const selectedMeetingStats = useMemo(() => {
+    const currentMeetingLogs = state.attendance.filter(
+      att => att.pertemuan.trim().toLowerCase() === sessionId.trim().toLowerCase()
+    );
+    const hadir = currentMeetingLogs.filter(att => att.status === 'Hadir').length;
+    const izin = currentMeetingLogs.filter(att => att.status === 'Izin').length;
+    const sakit = currentMeetingLogs.filter(att => att.status === 'Sakit').length;
+    const alpa = currentMeetingLogs.filter(att => att.status === 'Alpa').length;
+    const total = currentMeetingLogs.length;
+
+    return { hadir, izin, sakit, alpa, total };
+  }, [state.attendance, sessionId]);
 
   // REKAPITULASI DYNAMIC ENGINE WITH FILTER COUPLING
   // Returns: Map of Member Name -> { Hadir: x, Izin: y, Sakit: z, Alpa: w, Percent: p }
@@ -2365,16 +2388,6 @@ export default function App() {
 
                       {/* Display filters inline */}
                       <div className="flex flex-wrap items-center gap-2">
-                        {/* Empty Scan Log Button */}
-                        <button
-                          onClick={handleClearAllAttendance}
-                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 rounded-lg text-[11px] font-bold text-rose-600 transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
-                          title="Kosongkan Semua Log Presensi"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Kosongkan Log</span>
-                        </button>
-
                         {/* Search Input */}
                         <div className="relative w-full md:w-44">
                           <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none">
@@ -2392,11 +2405,10 @@ export default function App() {
                         {/* Meeting Filter select */}
                         <div className="w-full md:w-36">
                           <select
-                            value={scanLogMeetingFilter}
-                            onChange={(e) => setScanLogMeetingFilter(e.target.value)}
+                            value={sessionId}
+                            onChange={(e) => { setSessionId(e.target.value); playSoundEffect('click'); }}
                             className="px-2 py-1.5 w-full bg-white border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-800 focus:outline-none focus:border-blue-900 cursor-pointer"
                           >
-                            <option value="Semua">Semua Pertemuan</option>
                             <option value="Pertemuan 1">Pertemuan 1</option>
                             <option value="Pertemuan 2">Pertemuan 2</option>
                             <option value="Pertemuan 3">Pertemuan 3</option>
@@ -2418,15 +2430,55 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* Summary Statistics Panel */}
+                    <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-150 grid grid-cols-1 md:grid-cols-2 gap-4 select-none">
+                      {/* Already Present Card */}
+                      <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center gap-4 shadow-xs">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-xl font-bold shrink-0">
+                          ✓
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">Anggota Sudah Hadir</span>
+                          <span className="text-xl font-black text-emerald-950 mt-0.5 leading-none">
+                            {selectedMeetingStats.hadir} <span className="text-xs font-bold text-emerald-700">Orang</span>
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-600 mt-1 uppercase tracking-wide">
+                            {sessionId}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Real-Time Clock Card */}
+                      <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl flex items-center gap-4 shadow-xs">
+                        <div className="w-12 h-12 rounded-xl bg-blue-900 text-white flex items-center justify-center text-lg font-bold shrink-0">
+                          <Clock className="w-6 h-6" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-blue-900 uppercase tracking-widest">Tanggal & Waktu Real-Time</span>
+                          <span className="text-xl font-mono font-black text-blue-950 mt-0.5 tracking-tight leading-none">
+                            {currentDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 mt-1 leading-tight">
+                            {currentDateTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Table element */}
                     <div className="overflow-x-auto w-full">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                          <tr className="bg-slate-50 text-slate-700 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                             <th className="py-3 px-4 w-12 text-center">No</th>
                             <th className="py-3 px-4">Nama Anggota</th>
                             <th className="py-3 px-4">Pertemuan</th>
-                            <th className="py-3 px-4">Tanggal & Waktu Scan</th>
+                            <th className="py-3 px-4">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                Tanggal & Waktu Scan
+                              </span>
+                            </th>
                             <th className="py-3 px-4 text-center">Status</th>
                             <th className="py-3 px-4 text-center">Aksi</th>
                           </tr>
