@@ -38,12 +38,13 @@ import MemberCard from './components/MemberCard';
 // Recharts components
 import { 
   ResponsiveContainer, 
-  AreaChart, 
-  Area, 
+  BarChart, 
+  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip 
+  Tooltip,
+  Legend
 } from 'recharts';
 
 const STORAGE_KEY = 'halaqah_offline_db_v2';
@@ -2095,7 +2096,7 @@ export default function App() {
                       <div className="flex flex-col">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Anggota</span>
                         <h3 className="text-3xl font-black text-slate-900 mt-1 tracking-tight group-hover:text-blue-900 transition-colors">
-                          {dashboardStats.totalM} <span className="text-xs font-bold text-slate-500">Santri</span>
+                          {dashboardStats.totalM} <span className="text-xs font-bold text-slate-500">Anggota</span>
                         </h3>
                         <span className="text-[10px] text-slate-500 mt-1 font-semibold">Terdaftar dalam bimbingan halaqah</span>
                       </div>
@@ -2151,7 +2152,7 @@ export default function App() {
                       <div className="flex flex-col">
                         <span className="text-[10px] text-emerald-700 uppercase tracking-widest font-black block">Total Hadir</span>
                         <h3 className="text-3xl font-black text-emerald-800 mt-1.5 tracking-tight">
-                          {dashboardStats.totalHadir} <span className="text-xs font-bold text-emerald-600">Santri</span>
+                          {dashboardStats.totalHadir} <span className="text-xs font-bold text-emerald-600">Anggota</span>
                         </h3>
                         <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Hadir di Halaqah</span>
                       </div>
@@ -2168,7 +2169,7 @@ export default function App() {
                       <div className="flex flex-col">
                         <span className="text-[10px] text-amber-700 uppercase tracking-widest font-black block">Total Izin</span>
                         <h3 className="text-3xl font-black text-amber-850 mt-1.5 tracking-tight">
-                          {dashboardStats.totalIzin} <span className="text-xs font-bold text-amber-600">Santri</span>
+                          {dashboardStats.totalIzin} <span className="text-xs font-bold text-amber-600">Anggota</span>
                         </h3>
                         <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Keterangan Izin</span>
                       </div>
@@ -2185,7 +2186,7 @@ export default function App() {
                       <div className="flex flex-col">
                         <span className="text-[10px] text-sky-700 uppercase tracking-widest font-black block">Total Sakit</span>
                         <h3 className="text-3xl font-black text-sky-850 mt-1.5 tracking-tight">
-                          {dashboardStats.totalSakit} <span className="text-xs font-bold text-sky-600">Santri</span>
+                          {dashboardStats.totalSakit} <span className="text-xs font-bold text-sky-600">Anggota</span>
                         </h3>
                         <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Sedang Sakit</span>
                       </div>
@@ -2202,7 +2203,7 @@ export default function App() {
                       <div className="flex flex-col">
                         <span className="text-[10px] text-rose-700 uppercase tracking-widest font-black block">Total Alpha</span>
                         <h3 className="text-3xl font-black text-rose-850 mt-1.5 tracking-tight">
-                          {dashboardStats.totalAlpha} <span className="text-xs font-bold text-rose-600">Santri</span>
+                          {dashboardStats.totalAlpha} <span className="text-xs font-bold text-rose-600">Anggota</span>
                         </h3>
                         <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Tanpa Keterangan</span>
                       </div>
@@ -2213,25 +2214,19 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 3. Recharts Attendance Trend Area graph (no-print) */}
+                {/* 3. Recharts Attendance Trend Bar graph (no-print) */}
                 {attendanceTrendData.length > 0 && (
                   <div className="glass-card rounded-2xl p-5 md:p-6 shadow-sm flex flex-col gap-4 no-print border border-slate-200 bg-white">
                     <div>
-                      <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Grafik Tren Kehadiran</h3>
+                      <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Grafik Tren Kehadiran (Diagram Batang)</h3>
                       <p className="text-[10px] text-slate-500 mt-1 font-semibold">Jumlah kehadiran anggota per pertemuan yang terekam di Google Sheets.</p>
                     </div>
                     <div className="w-full h-64 mt-2">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
+                        <BarChart
                            data={attendanceTrendData}
                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                         >
-                           <defs>
-                            <linearGradient id="colorPresence" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.15}/>
-                              <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(15, 23, 42, 0.06)" />
                           <XAxis 
                             dataKey="meeting" 
@@ -2255,15 +2250,14 @@ export default function App() {
                               color: '#0f172a'
                             }} 
                           />
-                          <Area 
-                            type="monotone" 
-                            dataKey="Hadir" 
-                            stroke="#1e3a8a" 
-                            strokeWidth={2}
-                            fillOpacity={1} 
-                            fill="url(#colorPresence)" 
+                          <Legend 
+                            wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }}
                           />
-                        </AreaChart>
+                          <Bar dataKey="Hadir" fill="#10b981" radius={[4, 4, 0, 0]} name="Hadir" />
+                          <Bar dataKey="Izin" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Izin" />
+                          <Bar dataKey="Sakit" fill="#0ea5e9" radius={[4, 4, 0, 0]} name="Sakit" />
+                          <Bar dataKey="Alpa" fill="#f43f5e" radius={[4, 4, 0, 0]} name="Alpa" />
+                        </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
@@ -3268,7 +3262,17 @@ export default function App() {
                         Catatan riwayat aktivitas real-time dari seluruh Admin yang mengakses sistem Halaqah 5.0.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {appsScriptUrl ? (
+                        <span className="px-3 py-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Terhubung ke Google Sheets
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 text-[10px] font-extrabold text-slate-500 bg-slate-50 border border-slate-100 rounded-lg">
+                          Penyimpanan Lokal
+                        </span>
+                      )}
                       <span className="px-3 py-1 text-[10px] font-extrabold text-blue-900 bg-blue-50 border border-blue-100 rounded-lg">
                         Total: {(state.activityLogs || []).length} Log
                       </span>
@@ -3433,7 +3437,7 @@ export default function App() {
                       </h3>
                       <p className="text-xs opacity-90 leading-relaxed mt-1 font-semibold">
                         {appsScriptUrl 
-                          ? 'Setiap penambahan Anggota, Pembina, dan Presensi akan terkirim secara otomatis (real-time) ke Google Sheet Anda.' 
+                          ? 'Setiap penambahan Anggota, Pembina, Presensi, serta Log Aktivitas akan terkirim secara otomatis (real-time) ke Google Sheet Anda.' 
                           : 'Saat ini aplikasi berjalan luring di browser Anda. Anda bisa mengaktifkan integrasi Google Sheet menggunakan modul Apps Script di bawah.'}
                       </p>
                     </div>
