@@ -1421,22 +1421,24 @@ export default function App() {
   // Returns: Map of Member Name -> { Hadir: x, Izin: y, Sakit: z, Alpa: w, Percent: p }
   const individualRecap = useMemo(() => {
     const recapMap = new Map<string, { Hadir: number, Izin: number, Sakit: number, Alpa: number }>();
-    const excludedNames = ['ahmad fauzan', 'budi santoso', 'candra wijaya'];
-    const isExcluded = (name: string) => excludedNames.includes(name.trim().toLowerCase());
-
+    
+    // To match case-insensitively and trim spaces:
+    // Map lowercased trimmed name to the exact casing member name from DB
+    const memberNameMap = new Map<string, string>();
+    
     // Prepare every registered member so that even those with 0 attendance show up
     state.members.forEach(member => {
-      if (!isExcluded(member.nama)) {
-        recapMap.set(member.nama, { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 });
-      }
+      const cleanName = member.nama.trim().toLowerCase();
+      memberNameMap.set(cleanName, member.nama.trim());
+      recapMap.set(member.nama.trim(), { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 });
     });
 
     // Process attendance list based on selected filters
     state.attendance.forEach(att => {
-      if (isExcluded(att.nama)) return;
+      const cleanAttName = att.nama.trim().toLowerCase();
 
       // Apply filters: Meeting Name
-      if (filterMeeting !== 'Semua' && att.pertemuan !== filterMeeting) return;
+      if (filterMeeting !== 'Semua' && att.pertemuan.trim().toLowerCase() !== filterMeeting.trim().toLowerCase()) return;
       
       // Apply filters: Specific Date input matcher
       if (filterDate && att.tanggal !== filterDate.split('-').reverse().join('/')) {
@@ -1467,22 +1469,25 @@ export default function App() {
       }
 
       // Apply filters: Pembina match
-      if (filterPembina !== 'Semua' && att.pembina !== filterPembina) return;
+      if (filterPembina !== 'Semua' && att.pembina.trim().toLowerCase() !== filterPembina.trim().toLowerCase()) return;
+
+      // Determine correct key casing
+      const mapKey = memberNameMap.get(cleanAttName) || att.nama.trim();
 
       // Increment stats
-      const current = recapMap.get(att.nama) || { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 };
+      const current = recapMap.get(mapKey) || { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 };
       if (att.status === 'Hadir') current.Hadir += 1;
       else if (att.status === 'Izin') current.Izin += 1;
       else if (att.status === 'Sakit') current.Sakit += 1;
       else if (att.status === 'Alpa') current.Alpa += 1;
       
-      recapMap.set(att.nama, current);
+      recapMap.set(mapKey, current);
     });
 
     // Create printable array format
     const resultList: any[] = [];
     recapMap.forEach((stats, nama) => {
-      const matchDb = state.members.find(m => m.nama === nama);
+      const matchDb = state.members.find(m => m.nama.trim().toLowerCase() === nama.trim().toLowerCase());
       const totalSessions = stats.Hadir + stats.Izin + stats.Sakit + stats.Alpa;
       const presenceRate = totalSessions > 0 ? Math.round((stats.Hadir / totalSessions) * 100) : 0;
 
@@ -1517,17 +1522,28 @@ export default function App() {
 
     individualRecap.forEach(r => {
       sumPercentage += r.persentase;
-      totalHadir += r.hadir;
-      totalIzin += r.izin;
-      totalSakit += r.sakit;
     });
+
+    if (filterMeeting === 'Semua') {
+      // Unique members who were present / permitted / sick at least once
+      totalHadir = individualRecap.filter(r => r.hadir > 0).length;
+      totalIzin = individualRecap.filter(r => r.izin > 0).length;
+      totalSakit = individualRecap.filter(r => r.sakit > 0).length;
+    } else {
+      // Raw sum of records for a specific meeting
+      individualRecap.forEach(r => {
+        totalHadir += r.hadir;
+        totalIzin += r.izin;
+        totalSakit += r.sakit;
+      });
+    }
     
     // Formula requested: (Total Anggota) - (Total hadir + total izin + total sakit)
     const totalAlpha = Math.max(0, totalM - (totalHadir + totalIzin + totalSakit));
     const avgPercentage = individualRecap.length > 0 ? Math.round(sumPercentage / individualRecap.length) : 0;
 
     return { totalM, totalP, avgPercentage, totalHadir, totalIzin, totalSakit, totalAlpha };
-  }, [state.members, state.pembina, individualRecap]);
+  }, [state.members, state.pembina, individualRecap, filterMeeting]);
 
   // Recharts Attendance Trend generator
   const attendanceTrendData = useMemo(() => {
@@ -1851,16 +1867,7 @@ export default function App() {
             >
               Group ({state.groups?.length || 0})
             </button>
-            <button
-              onClick={() => { setActiveTab('logs'); playSoundEffect('click'); }}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-250 cursor-pointer ${
-                activeTab === 'logs' 
-                  ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
-                  : 'text-slate-600 hover:text-blue-900 hover:bg-white/50'
-              }`}
-            >
-              Log Activity
-            </button>
+
             <button
               onClick={() => { setActiveTab('sheets'); playSoundEffect('click'); }}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-250 flex items-center gap-1.5 cursor-pointer ${
@@ -1971,17 +1978,7 @@ export default function App() {
                     <span>Group ({state.groups?.length || 0})</span>
                     {activeTab === 'group' && <Check className="w-4 h-4 text-white" />}
                   </button>
-                  <button
-                    onClick={() => { setActiveTab('logs'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
-                    className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer text-left flex items-center justify-between ${
-                      activeTab === 'logs' 
-                        ? 'bg-blue-900 text-white font-extrabold shadow-sm' 
-                        : 'text-slate-600 hover:text-blue-900 hover:bg-slate-100/70'
-                    }`}
-                  >
-                    <span>Log Activity</span>
-                    {activeTab === 'logs' && <Check className="w-4 h-4 text-white" />}
-                  </button>
+
                   <button
                     onClick={() => { setActiveTab('sheets'); setIsMobileMenuOpen(false); playSoundEffect('click'); }}
                     className={`px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-150 flex items-center justify-between cursor-pointer ${
@@ -2253,10 +2250,7 @@ export default function App() {
                           <Legend 
                             wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }}
                           />
-                          <Bar dataKey="Hadir" fill="#10b981" radius={[4, 4, 0, 0]} name="Hadir" />
-                          <Bar dataKey="Izin" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Izin" />
-                          <Bar dataKey="Sakit" fill="#0ea5e9" radius={[4, 4, 0, 0]} name="Sakit" />
-                          <Bar dataKey="Alpa" fill="#f43f5e" radius={[4, 4, 0, 0]} name="Alpa" />
+                          <Bar dataKey="Hadir" fill="#1e3a8a" radius={[4, 4, 0, 0]} name="Jumlah Hadir" />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
