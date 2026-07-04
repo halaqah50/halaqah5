@@ -2641,85 +2641,10 @@ export default function App() {
 
             {/* ----------------- TAB: ANGGOTA (MEMBERS) ----------------- */}
             {activeTab === 'members' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="w-full">
                 
-                {/* Member Enrollment Form */}
-                <div className="lg:col-span-1">
-                  <div className="glass-card bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-5 sticky top-24">
-                    <div>
-                      <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Pendaftaran Anggota Baru</h3>
-                      <p className="text-[10px] text-slate-500 font-semibold mt-1">Lengkapi data di bawah untuk didaftarkan langsung ke Google Sheets secara real-time.</p>
-                    </div>
-
-                    <form onSubmit={handleAddMemberSubmit} className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Nama Lengkap</label>
-                        <input
-                          type="text"
-                          required
-                          value={newMemberForm.nama}
-                          onChange={(e) => setNewMemberForm({...newMemberForm, nama: e.target.value})}
-                          placeholder="Contoh: Muhammad Ihsan"
-                          className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900 font-semibold bg-white"
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Alamat Tinggal</label>
-                        <input
-                          type="text"
-                          value={newMemberForm.alamat}
-                          onChange={(e) => setNewMemberForm({...newMemberForm, alamat: e.target.value})}
-                          placeholder="Contoh: Jl. Sudirman No 15"
-                          className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900 font-semibold bg-white"
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">NO ID</label>
-                        <input
-                          type="tel"
-                          value={newMemberForm.nomorWA}
-                          onChange={(e) => setNewMemberForm({...newMemberForm, nomorWA: e.target.value})}
-                          placeholder="Contoh: 081234567890"
-                          className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900 font-semibold bg-white"
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Pembina Halaqah (Mapping)</label>
-                        <select
-                          value={newMemberForm.pembina}
-                          onChange={(e) => setNewMemberForm({...newMemberForm, pembina: e.target.value})}
-                          className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-900 font-semibold bg-white cursor-pointer"
-                        >
-                          <option value="">-- Hubungkan Pembina --</option>
-                          {state.pembina.map((pem) => (
-                            <option key={pem.nama} value={pem.nama}>
-                              {pem.nama}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isSubmittingMember}
-                        className="w-full inline-flex items-center justify-center gap-2 bg-blue-900 hover:bg-blue-950 disabled:opacity-50 text-white font-extrabold py-3 px-4 rounded-xl text-xs cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all"
-                      >
-                        {isSubmittingMember ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Plus className="w-4 h-4" />
-                        )}
-                        <span>{isSubmittingMember ? 'Mendaftarkan...' : 'Daftarkan Anggota'}</span>
-                      </button>
-                    </form>
-                  </div>
-                </div>
-
                 {/* Member List Directory with Card generation link */}
-                <div className="lg:col-span-2">
+                <div className="w-full">
                   <div className="glass-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                     
                     <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
