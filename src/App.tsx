@@ -2742,69 +2742,11 @@ export default function App() {
             {activeTab === 'pembina' && (
               <div className="flex flex-col gap-8">
                 
-                {/* 1. Pembina Directory and Addition Form */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                   {/* Form Pembina Baru */}
-                  <div className="lg:col-span-1">
-                    <div className="glass-card bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-5 sticky top-24">
-                      <div>
-                        <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Daftar Pembina Baru</h3>
-                        <p className="text-[10px] text-slate-500 font-semibold mt-1">Tambahkan guru/pembimbing ustadz yang memimpin aktivitas bimbingan halaqah.</p>
-                      </div>
-
-                      <form onSubmit={handleAddPembinaSubmit} className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Nama Lengkap Pembina</label>
-                          <input
-                            type="text"
-                            required
-                            value={newPembinaForm.nama}
-                            onChange={(e) => setNewPembinaForm({...newPembinaForm, nama: e.target.value})}
-                            placeholder="Contoh: Ustadz Ahmad Fauzi"
-                            className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900 font-semibold bg-white"
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Alamat</label>
-                          <input
-                            type="text"
-                            value={newPembinaForm.alamat}
-                            onChange={(e) => setNewPembinaForm({...newPembinaForm, alamat: e.target.value})}
-                            placeholder="Contoh: Perum Graha Indah Blok C3"
-                            className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900 font-semibold bg-white"
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Nomor WA</label>
-                          <input
-                            type="tel"
-                             value={newPembinaForm.nomorWA}
-                            onChange={(e) => setNewPembinaForm({...newPembinaForm, nomorWA: e.target.value})}
-                            placeholder="Contoh: 08571234567"
-                            className="w-full glass-input border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-900 font-semibold bg-white"
-                          />
-                        </div>
-
-                        <button
-                          type="submit"
-                          disabled={isSubmittingPembina}
-                          className="w-full inline-flex items-center justify-center gap-2 bg-blue-900 hover:bg-blue-950 disabled:opacity-50 text-white font-extrabold py-3 px-4 rounded-xl text-xs cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all"
-                        >
-                          {isSubmittingPembina ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Plus className="w-4 h-4" />
-                          )}
-                          <span>{isSubmittingPembina ? 'Menyimpan...' : 'Tambahkan Pembina'}</span>
-                        </button>
-                      </form>
-                    </div>
-                  </div>
+                {/* 1. Pembina Directory */}
+                <div className="w-full">
 
                   {/* Pembina active list Directory */}
-                  <div className="lg:col-span-2">
+                  <div className="w-full">
                     <div className="glass-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                       <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                         <div>
@@ -2831,7 +2773,7 @@ export default function App() {
                             {state.pembina.length === 0 ? (
                               <tr>
                                 <td colSpan={5} className="py-12 text-center text-slate-500 font-semibold">
-                                  Belum ada Pembina terdaftar. Silakan tambahkan pembina baru untuk membimbing session halaqah.
+                                  Belum ada Pembina terdaftar.
                                 </td>
                               </tr>
                             ) : (
