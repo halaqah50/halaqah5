@@ -28,7 +28,9 @@ import {
   X,
   Eye,
   EyeOff,
-  HeartPulse
+  HeartPulse,
+  ArrowUpDown,
+  FileSpreadsheet
 } from 'lucide-react';
 
 import { Member, Attendance, Pembina, AttendancePembina, AppState } from './types';
@@ -518,6 +520,11 @@ export default function App() {
   const [filterMonth, setFilterMonth] = useState('Semua');
   const [filterPembina, setFilterPembina] = useState('Semua');
   const [searchMemberQuery, setSearchMemberQuery] = useState('');
+
+  // Filters and sorting for Individual Recapitulation table
+  const [recapSortKey, setRecapSortKey] = useState<string>('nama');
+  const [recapSortOrder, setRecapSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [recapFilterPresence, setRecapFilterPresence] = useState<string>('Semua');
 
   // Filters and queries for Log Activity Tab
   const [logSearchQuery, setLogSearchQuery] = useState('');
@@ -1509,6 +1516,54 @@ export default function App() {
     );
   }, [state.members, state.attendance, filterMeeting, filterDate, filterMonth, filterPembina, searchMemberQuery]);
 
+  // Filter and Sort implementation for the Individual Recap table
+  const sortedAndFilteredRecap = useMemo(() => {
+    let list = [...individualRecap];
+
+    // Apply presence/attendance rate filters
+    if (recapFilterPresence !== 'Semua') {
+      if (recapFilterPresence === 'Sangat Baik (>= 80%)') {
+        list = list.filter(item => item.persentase >= 80);
+      } else if (recapFilterPresence === 'Cukup Baik (50% - 79%)') {
+        list = list.filter(item => item.persentase >= 50 && item.persentase < 80);
+      } else if (recapFilterPresence === 'Kurang Baik (< 50%)') {
+        list = list.filter(item => item.persentase < 50);
+      } else if (recapFilterPresence === 'Pernah Alpa (Alpa > 0)') {
+        list = list.filter(item => item.alpa > 0);
+      } else if (recapFilterPresence === 'Sempurna (100% Hadir)') {
+        list = list.filter(item => item.persentase === 100 && item.total > 0);
+      }
+    }
+
+    // Apply sorting
+    list.sort((a, b) => {
+      let valA = a[recapSortKey as keyof typeof a];
+      let valB = b[recapSortKey as keyof typeof b];
+
+      if (valA === undefined) valA = '';
+      if (valB === undefined) valB = '';
+
+      // Handle case-insensitive sorting for name
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return recapSortOrder === 'asc' 
+          ? valA.localeCompare(valB, 'id', { sensitivity: 'base' })
+          : valB.localeCompare(valA, 'id', { sensitivity: 'base' });
+      }
+
+      // Handle numbers
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return recapSortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+
+      // Fallback
+      if (valA < valB) return recapSortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return recapSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return list;
+  }, [individualRecap, recapSortKey, recapSortOrder, recapFilterPresence]);
+
   // Overall statistics counters
   const dashboardStats = useMemo(() => {
     const totalM = state.members.length;
@@ -1575,6 +1630,73 @@ export default function App() {
   const handlePrintPdfReport = () => {
     playSoundEffect('click');
     window.print();
+  };
+
+  // Handle header sort interaction
+  const handleHeaderSort = (key: string) => {
+    playSoundEffect('click');
+    if (recapSortKey === key) {
+      setRecapSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setRecapSortKey(key);
+      setRecapSortOrder(key === 'nama' ? 'asc' : 'desc');
+    }
+  };
+
+  // Export Individual Recapitulation to CSV (Excel compatible)
+  const exportToExcel = () => {
+    playSoundEffect('success');
+    
+    // Prepare headers
+    const headers = [
+      "No", 
+      "Nama Lengkap", 
+      "Alamat", 
+      "No WA", 
+      "Hadir (H)", 
+      "Izin (I)", 
+      "Sakit (S)", 
+      "Alpa (A)", 
+      "Total Sesi", 
+      "Persentase Presensi"
+    ];
+    
+    // Prepare rows
+    const rows = sortedAndFilteredRecap.map((recap, idx) => [
+      idx + 1,
+      recap.nama,
+      recap.alamat || '-',
+      recap.nomorWA || '-',
+      recap.hadir,
+      recap.izin,
+      recap.sakit,
+      recap.alpa,
+      recap.total,
+      `${recap.persentase}%`
+    ]);
+    
+    const escapeCsvField = (field: any) => {
+      const stringValue = String(field);
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
+    const headerLine = headers.map(escapeCsvField).join(",");
+    const dataLines = rows.map(row => row.map(escapeCsvField).join(","));
+    const csvContent = [headerLine, ...dataLines].join("\r\n");
+    
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Rekap_Kehadiran_Individu_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast("Berhasil mengekspor data rekap ke Excel/CSV!");
   };
 
   // List of Month filter options in Indonesian language
@@ -2261,31 +2383,121 @@ export default function App() {
                 <div className="glass-card bg-white print:bg-white print:text-slate-900 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                   
                   {/* Table title action panel */}
-                  <div className="px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print bg-slate-50">
-                    <div>
-                      <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Rekapitulasi Kehadiran Individu</h3>
-                      <p className="text-[10px] text-slate-500 mt-1 font-semibold">Data individual otomatis dihitung dari rekaman filter Google Sheets.</p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                      <div className="relative flex-1 sm:flex-none">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          placeholder="Cari Nama Anggota..."
-                          value={searchMemberQuery}
-                          onChange={(e) => setSearchMemberQuery(e.target.value)}
-                          className="pl-9 pr-3 py-1.5 glass-input border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-900 w-full sm:w-44 focus:sm:w-60 transition-all placeholder-slate-450 bg-white"
-                        />
+                  <div className="px-6 py-5 border-b border-slate-200 flex flex-col gap-4 bg-slate-50">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <h3 className="text-xs font-bold text-blue-950 tracking-wider uppercase">Rekapitulasi Kehadiran Individu</h3>
+                        <p className="text-[10px] text-slate-500 mt-1 font-semibold">Data individual otomatis dihitung dari rekaman filter Google Sheets.</p>
                       </div>
 
-                      <button
-                        onClick={handlePrintPdfReport}
-                        className="py-1.5 px-3 bg-blue-900 hover:bg-blue-950 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                        <span>Cetak Laporan Kehadiran</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2 w-full md:w-auto no-print">
+                        <button
+                          onClick={exportToExcel}
+                          className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          <span>Ekspor ke Excel</span>
+                        </button>
+
+                        <button
+                          onClick={handlePrintPdfReport}
+                          className="py-1.5 px-3 bg-blue-900 hover:bg-blue-950 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Cetak Laporan Kehadiran</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Filter and Sorting Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 no-print pt-3 border-t border-slate-150">
+                      {/* Search */}
+                      <div className="relative">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Cari Anggota</span>
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="Cari Nama Anggota..."
+                            value={searchMemberQuery}
+                            onChange={(e) => setSearchMemberQuery(e.target.value)}
+                            className="pl-9 pr-3 py-1.5 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-900 w-full transition-all placeholder-slate-450 bg-white font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filter Presensi */}
+                      <div>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Filter Kehadiran</span>
+                        <select
+                          value={recapFilterPresence}
+                          onChange={(e) => {
+                            playSoundEffect('click');
+                            setRecapFilterPresence(e.target.value);
+                          }}
+                          className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-900 font-semibold bg-white cursor-pointer"
+                        >
+                          <option value="Semua">Semua Tingkat Kehadiran</option>
+                          <option value="Sangat Baik (>= 80%)">Sangat Baik (≥ 80%)</option>
+                          <option value="Cukup Baik (50% - 79%)">Cukup Baik (50% - 79%)</option>
+                          <option value="Kurang Baik (< 50%)">Kurang Baik (&lt; 50%)</option>
+                          <option value="Pernah Alpa (Alpa > 0)">Pernah Alpa (Alpa &gt; 0)</option>
+                          <option value="Sempurna (100% Hadir)">Sempurna (100% Hadir)</option>
+                        </select>
+                      </div>
+
+                      {/* Urutkan Berdasarkan */}
+                      <div>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Urutkan</span>
+                        <select
+                          value={recapSortKey}
+                          onChange={(e) => {
+                            playSoundEffect('click');
+                            setRecapSortKey(e.target.value);
+                          }}
+                          className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-900 font-semibold bg-white cursor-pointer"
+                        >
+                          <option value="nama">Nama Lengkap</option>
+                          <option value="hadir">Hadir (H)</option>
+                          <option value="izin">Izin (I)</option>
+                          <option value="sakit">Sakit (S)</option>
+                          <option value="alpa">Alpa (A)</option>
+                          <option value="persentase">Persentase Presensi</option>
+                        </select>
+                      </div>
+
+                      {/* Urutan */}
+                      <div>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Arah Urutan</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              playSoundEffect('click');
+                              setRecapSortOrder('asc');
+                            }}
+                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              recapSortOrder === 'asc' 
+                                ? 'bg-blue-900 border-blue-900 text-white' 
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            Meningkat (▲)
+                          </button>
+                          <button
+                            onClick={() => {
+                              playSoundEffect('click');
+                              setRecapSortOrder('desc');
+                            }}
+                            className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              recapSortOrder === 'desc' 
+                                ? 'bg-blue-900 border-blue-900 text-white' 
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            Menurun (▼)
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -2293,26 +2505,105 @@ export default function App() {
                   <div className="overflow-x-auto w-full">
                     <table className="w-full text-left border-collapse text-xs print:text-black">
                       <thead>
-                        <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px] my-1 print:bg-slate-200 print:text-slate-900 border-b border-slate-200">
+                        <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px] my-1 print:bg-slate-200 print:text-slate-900 border-b border-slate-200 select-none">
                           <th className="py-3.5 px-4 w-12 text-center">No</th>
-                          <th className="py-3.5 px-4">Nama Lengkap</th>
+                          
+                          {/* Nama Lengkap - Click to Sort */}
+                          <th 
+                            onClick={() => handleHeaderSort('nama')}
+                            className="py-3.5 px-4 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group"
+                          >
+                            <div className="flex items-center gap-1">
+                              <span>Nama Lengkap</span>
+                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'nama' ? 'text-blue-900' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                              {recapSortKey === 'nama' && (
+                                <span className="text-[9px] font-black text-blue-900 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
+                              )}
+                            </div>
+                          </th>
+
                           <th className="py-3.5 px-4 no-print">No WA</th>
-                          <th className="py-3.5 px-4 text-center text-blue-900 font-bold print:text-blue-900">Hadir (H)</th>
-                          <th className="py-3.5 px-3 text-center text-amber-500 print:text-amber-800 font-bold">Izin (I)</th>
-                          <th className="py-3.5 px-3 text-center text-sky-600 print:text-sky-800 font-bold">Sakit (S)</th>
-                          <th className="py-3.5 px-3 text-center text-red-500 print:text-rose-800 font-bold">Alpa (A)</th>
-                          <th className="py-3.5 px-4 text-center">% Presensi</th>
+
+                          {/* Hadir - Click to Sort */}
+                          <th 
+                            onClick={() => handleHeaderSort('hadir')}
+                            className="py-3.5 px-4 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
+                          >
+                            <div className="flex items-center justify-center gap-1 text-blue-900">
+                              <span>Hadir (H)</span>
+                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'hadir' ? 'text-blue-900' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                              {recapSortKey === 'hadir' && (
+                                <span className="text-[9px] font-black text-blue-900 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
+                              )}
+                            </div>
+                          </th>
+
+                          {/* Izin - Click to Sort */}
+                          <th 
+                            onClick={() => handleHeaderSort('izin')}
+                            className="py-3.5 px-3 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
+                          >
+                            <div className="flex items-center justify-center gap-1 text-amber-500 print:text-amber-800">
+                              <span>Izin (I)</span>
+                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'izin' ? 'text-amber-500' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                              {recapSortKey === 'izin' && (
+                                <span className="text-[9px] font-black text-amber-600 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
+                              )}
+                            </div>
+                          </th>
+
+                          {/* Sakit - Click to Sort */}
+                          <th 
+                            onClick={() => handleHeaderSort('sakit')}
+                            className="py-3.5 px-3 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
+                          >
+                            <div className="flex items-center justify-center gap-1 text-sky-600 print:text-sky-800">
+                              <span>Sakit (S)</span>
+                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'sakit' ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                              {recapSortKey === 'sakit' && (
+                                <span className="text-[9px] font-black text-sky-600 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
+                              )}
+                            </div>
+                          </th>
+
+                          {/* Alpa - Click to Sort */}
+                          <th 
+                            onClick={() => handleHeaderSort('alpa')}
+                            className="py-3.5 px-3 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
+                          >
+                            <div className="flex items-center justify-center gap-1 text-red-500 print:text-rose-800">
+                              <span>Alpa (A)</span>
+                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'alpa' ? 'text-red-500' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                              {recapSortKey === 'alpa' && (
+                                <span className="text-[9px] font-black text-red-650 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
+                              )}
+                            </div>
+                          </th>
+
+                          {/* % Presensi - Click to Sort */}
+                          <th 
+                            onClick={() => handleHeaderSort('persentase')}
+                            className="py-3.5 px-4 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              <span>% Presensi</span>
+                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'persentase' ? 'text-blue-900' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                              {recapSortKey === 'persentase' && (
+                                <span className="text-[9px] font-black text-blue-900 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
+                              )}
+                            </div>
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 print:divide-slate-200">
-                        {individualRecap.length === 0 ? (
+                        {sortedAndFilteredRecap.length === 0 ? (
                           <tr>
                             <td colSpan={8} className="py-10 text-center text-slate-450 font-semibold md:text-sm">
-                              Belum ada data anggota atau presensi yang memenuhui filter yang diterapkan.
+                              Belum ada data anggota atau presensi yang memenuhi filter yang diterapkan.
                             </td>
                           </tr>
                         ) : (
-                          individualRecap.map((recap, idx) => (
+                          sortedAndFilteredRecap.map((recap, idx) => (
                             <tr key={recap.nama + '-' + idx} className="hover:bg-slate-50 transition-colors print:hover:bg-transparent">
                               <td className="py-3.5 px-4 text-center text-slate-450 font-bold print:text-neutral-500">{idx + 1}</td>
                               <td className="py-3.5 px-4">
