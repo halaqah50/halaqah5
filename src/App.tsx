@@ -2482,6 +2482,7 @@ export default function App() {
                           className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-900 font-semibold bg-white cursor-pointer"
                         >
                           <option value="nama">Nama Lengkap</option>
+                          <option value="alamat">Alamat</option>
                           <option value="hadir">Hadir (H)</option>
                           <option value="keterangan">Keterangan</option>
                         </select>
@@ -2543,6 +2544,20 @@ export default function App() {
                             </div>
                           </th>
 
+                          {/* Alamat - Click to Sort */}
+                          <th 
+                            onClick={() => handleHeaderSort('alamat')}
+                            className="py-3.5 px-4 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group"
+                          >
+                            <div className="flex items-center gap-1">
+                              <span>Alamat</span>
+                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'alamat' ? 'text-blue-900' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                              {recapSortKey === 'alamat' && (
+                                <span className="text-[9px] font-black text-blue-900 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
+                              )}
+                            </div>
+                          </th>
+
                           <th className="py-3.5 px-4 no-print">No WA</th>
 
                           {/* Hadir - Click to Sort */}
@@ -2577,7 +2592,7 @@ export default function App() {
                       <tbody className="divide-y divide-slate-100 print:divide-slate-200">
                         {sortedAndFilteredRecap.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="py-10 text-center text-slate-450 font-semibold md:text-sm">
+                            <td colSpan={6} className="py-10 text-center text-slate-450 font-semibold md:text-sm">
                               Belum ada data anggota atau presensi yang memenuhi filter yang diterapkan.
                             </td>
                           </tr>
@@ -2588,6 +2603,7 @@ export default function App() {
                               <td className="py-3.5 px-4">
                                 <span className="font-extrabold text-slate-900 print:text-slate-950">{recap.nama}</span>
                               </td>
+                              <td className="py-3.5 px-4 text-slate-600 font-medium">{recap.alamat}</td>
                               <td className="py-3.5 px-4 text-slate-600 font-semibold no-print">{recap.nomorWA}</td>
                               <td className="py-3.5 px-4 text-center font-extrabold text-blue-900 print:text-blue-900 text-sm">{recap.hadir}</td>
                               <td className="py-3.5 px-4 text-left font-semibold text-slate-700">{recap.keterangan}</td>
