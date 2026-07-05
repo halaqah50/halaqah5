@@ -1522,7 +1522,19 @@ export default function App() {
 
     // Apply presence/attendance rate filters
     if (recapFilterPresence !== 'Semua') {
-      if (recapFilterPresence === 'Sangat Baik (>= 80%)') {
+      if (recapFilterPresence === 'Hadir 1x') {
+        list = list.filter(item => item.hadir === 1);
+      } else if (recapFilterPresence === 'Hadir 2x') {
+        list = list.filter(item => item.hadir === 2);
+      } else if (recapFilterPresence === 'Hadir 3x') {
+        list = list.filter(item => item.hadir === 3);
+      } else if (recapFilterPresence === 'Hadir 4x') {
+        list = list.filter(item => item.hadir === 4);
+      } else if (recapFilterPresence === 'Hadir >= 5x') {
+        list = list.filter(item => item.hadir >= 5);
+      } else if (recapFilterPresence === 'Tidak Pernah Hadir') {
+        list = list.filter(item => item.hadir === 0);
+      } else if (recapFilterPresence === 'Sangat Baik (>= 80%)') {
         list = list.filter(item => item.persentase >= 80);
       } else if (recapFilterPresence === 'Cukup Baik (50% - 79%)') {
         list = list.filter(item => item.persentase >= 50 && item.persentase < 80);
@@ -2438,6 +2450,12 @@ export default function App() {
                           className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-900 font-semibold bg-white cursor-pointer"
                         >
                           <option value="Semua">Semua Tingkat Kehadiran</option>
+                          <option value="Hadir 1x">Hadir 1x Sesi</option>
+                          <option value="Hadir 2x">Hadir 2x Sesi</option>
+                          <option value="Hadir 3x">Hadir 3x Sesi</option>
+                          <option value="Hadir 4x">Hadir 4x Sesi</option>
+                          <option value="Hadir >= 5x">Hadir ≥ 5x Sesi</option>
+                          <option value="Tidak Pernah Hadir">Tidak Pernah Hadir (0x)</option>
                           <option value="Sangat Baik (>= 80%)">Sangat Baik (≥ 80%)</option>
                           <option value="Cukup Baik (50% - 79%)">Cukup Baik (50% - 79%)</option>
                           <option value="Kurang Baik (< 50%)">Kurang Baik (&lt; 50%)</option>
