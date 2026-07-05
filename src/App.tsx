@@ -1425,9 +1425,9 @@ export default function App() {
   }, [state.attendance, sessionId]);
 
   // REKAPITULASI DYNAMIC ENGINE WITH FILTER COUPLING
-  // Returns: Map of Member Name -> { Hadir: x, Izin: y, Sakit: z, Alpa: w, Percent: p }
+  // Returns: Map of Member Name -> { Hadir: x, Izin: y, Sakit: z, Alpa: w, Percent: p, PertemuanHadir: string[] }
   const individualRecap = useMemo(() => {
-    const recapMap = new Map<string, { Hadir: number, Izin: number, Sakit: number, Alpa: number }>();
+    const recapMap = new Map<string, { Hadir: number, Izin: number, Sakit: number, Alpa: number, PertemuanHadir: string[] }>();
     
     // To match case-insensitively and trim spaces:
     // Map lowercased trimmed name to the exact casing member name from DB
@@ -1437,7 +1437,7 @@ export default function App() {
     state.members.forEach(member => {
       const cleanName = member.nama.trim().toLowerCase();
       memberNameMap.set(cleanName, member.nama.trim());
-      recapMap.set(member.nama.trim(), { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 });
+      recapMap.set(member.nama.trim(), { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0, PertemuanHadir: [] });
     });
 
     // Process attendance list based on selected filters
@@ -1482,8 +1482,14 @@ export default function App() {
       const mapKey = memberNameMap.get(cleanAttName) || att.nama.trim();
 
       // Increment stats
-      const current = recapMap.get(mapKey) || { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 };
-      if (att.status === 'Hadir') current.Hadir += 1;
+      const current = recapMap.get(mapKey) || { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0, PertemuanHadir: [] };
+      if (att.status === 'Hadir') {
+        current.Hadir += 1;
+        const pert = att.pertemuan.trim();
+        if (!current.PertemuanHadir.includes(pert)) {
+          current.PertemuanHadir.push(pert);
+        }
+      }
       else if (att.status === 'Izin') current.Izin += 1;
       else if (att.status === 'Sakit') current.Sakit += 1;
       else if (att.status === 'Alpa') current.Alpa += 1;
@@ -1498,6 +1504,13 @@ export default function App() {
       const totalSessions = stats.Hadir + stats.Izin + stats.Sakit + stats.Alpa;
       const presenceRate = totalSessions > 0 ? Math.round((stats.Hadir / totalSessions) * 100) : 0;
 
+      // Sort the PertemuanHadir alphabetically or numerically
+      stats.PertemuanHadir.sort((a, b) => {
+        const numA = parseInt(a.replace(/^\D+/g, '')) || 0;
+        const numB = parseInt(b.replace(/^\D+/g, '')) || 0;
+        return numA - numB;
+      });
+
       resultList.push({
         nama,
         alamat: matchDb?.alamat || '-',
@@ -1507,7 +1520,8 @@ export default function App() {
         sakit: stats.Sakit,
         alpa: stats.Alpa,
         total: totalSessions,
-        persentase: presenceRate
+        persentase: presenceRate,
+        keterangan: stats.PertemuanHadir.join(', ') || '-'
       });
     });
 
@@ -1666,11 +1680,7 @@ export default function App() {
       "Alamat", 
       "No WA", 
       "Hadir (H)", 
-      "Izin (I)", 
-      "Sakit (S)", 
-      "Alpa (A)", 
-      "Total Sesi", 
-      "Persentase Presensi"
+      "Keterangan"
     ];
     
     // Prepare rows
@@ -1680,11 +1690,7 @@ export default function App() {
       recap.alamat || '-',
       recap.nomorWA || '-',
       recap.hadir,
-      recap.izin,
-      recap.sakit,
-      recap.alpa,
-      recap.total,
-      `${recap.persentase}%`
+      recap.keterangan || '-'
     ]);
     
     const escapeCsvField = (field: any) => {
@@ -2477,10 +2483,7 @@ export default function App() {
                         >
                           <option value="nama">Nama Lengkap</option>
                           <option value="hadir">Hadir (H)</option>
-                          <option value="izin">Izin (I)</option>
-                          <option value="sakit">Sakit (S)</option>
-                          <option value="alpa">Alpa (A)</option>
-                          <option value="persentase">Persentase Presensi</option>
+                          <option value="keterangan">Keterangan</option>
                         </select>
                       </div>
 
@@ -2556,57 +2559,15 @@ export default function App() {
                             </div>
                           </th>
 
-                          {/* Izin - Click to Sort */}
+                          {/* Keterangan - Click to Sort */}
                           <th 
-                            onClick={() => handleHeaderSort('izin')}
-                            className="py-3.5 px-3 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
+                            onClick={() => handleHeaderSort('keterangan')}
+                            className="py-3.5 px-4 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-left"
                           >
-                            <div className="flex items-center justify-center gap-1 text-amber-500 print:text-amber-800">
-                              <span>Izin (I)</span>
-                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'izin' ? 'text-amber-500' : 'text-slate-400 group-hover:text-slate-600'}`} />
-                              {recapSortKey === 'izin' && (
-                                <span className="text-[9px] font-black text-amber-600 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
-                              )}
-                            </div>
-                          </th>
-
-                          {/* Sakit - Click to Sort */}
-                          <th 
-                            onClick={() => handleHeaderSort('sakit')}
-                            className="py-3.5 px-3 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
-                          >
-                            <div className="flex items-center justify-center gap-1 text-sky-600 print:text-sky-800">
-                              <span>Sakit (S)</span>
-                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'sakit' ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
-                              {recapSortKey === 'sakit' && (
-                                <span className="text-[9px] font-black text-sky-600 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
-                              )}
-                            </div>
-                          </th>
-
-                          {/* Alpa - Click to Sort */}
-                          <th 
-                            onClick={() => handleHeaderSort('alpa')}
-                            className="py-3.5 px-3 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
-                          >
-                            <div className="flex items-center justify-center gap-1 text-red-500 print:text-rose-800">
-                              <span>Alpa (A)</span>
-                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'alpa' ? 'text-red-500' : 'text-slate-400 group-hover:text-slate-600'}`} />
-                              {recapSortKey === 'alpa' && (
-                                <span className="text-[9px] font-black text-red-650 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
-                              )}
-                            </div>
-                          </th>
-
-                          {/* % Presensi - Click to Sort */}
-                          <th 
-                            onClick={() => handleHeaderSort('persentase')}
-                            className="py-3.5 px-4 cursor-pointer hover:bg-slate-200 print:hover:bg-transparent transition-colors group text-center"
-                          >
-                            <div className="flex items-center justify-center gap-1">
-                              <span>% Presensi</span>
-                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'persentase' ? 'text-blue-900' : 'text-slate-400 group-hover:text-slate-600'}`} />
-                              {recapSortKey === 'persentase' && (
+                            <div className="flex items-center gap-1 text-slate-700">
+                              <span>Keterangan Sesi</span>
+                              <ArrowUpDown className={`w-3 h-3 no-print transition-colors ${recapSortKey === 'keterangan' ? 'text-blue-900' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                              {recapSortKey === 'keterangan' && (
                                 <span className="text-[9px] font-black text-blue-900 no-print">{recapSortOrder === 'asc' ? '▲' : '▼'}</span>
                               )}
                             </div>
@@ -2616,7 +2577,7 @@ export default function App() {
                       <tbody className="divide-y divide-slate-100 print:divide-slate-200">
                         {sortedAndFilteredRecap.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="py-10 text-center text-slate-450 font-semibold md:text-sm">
+                            <td colSpan={5} className="py-10 text-center text-slate-450 font-semibold md:text-sm">
                               Belum ada data anggota atau presensi yang memenuhi filter yang diterapkan.
                             </td>
                           </tr>
@@ -2629,20 +2590,7 @@ export default function App() {
                               </td>
                               <td className="py-3.5 px-4 text-slate-600 font-semibold no-print">{recap.nomorWA}</td>
                               <td className="py-3.5 px-4 text-center font-extrabold text-blue-900 print:text-blue-900 text-sm">{recap.hadir}</td>
-                              <td className="py-3.5 px-3 text-center font-bold text-amber-500 print:text-amber-800 text-sm">{recap.izin}</td>
-                              <td className="py-3.5 px-3 text-center font-bold text-sky-600 print:text-sky-800 text-sm">{recap.sakit}</td>
-                              <td className="py-3.5 px-3 text-center font-bold text-red-500 print:text-rose-800 text-sm">{recap.alpa}</td>
-                              <td className="py-3.5 px-4 text-center">
-                                <span className={`px-2.5 py-1 rounded-full font-extrabold text-[10px] shadow-sm ${
-                                  recap.persentase >= 80 
-                                    ? 'bg-blue-50 text-blue-900 border border-blue-100 print:bg-blue-100 print:text-blue-900' 
-                                    : recap.persentase >= 50 
-                                    ? 'bg-amber-50 text-amber-600 border border-amber-100 print:bg-amber-100 print:text-amber-800' 
-                                    : 'bg-rose-50 text-rose-600 border border-rose-100 print:bg-rose-100 print:text-rose-800'
-                                }`}>
-                                  {recap.persentase}%
-                                </span>
-                              </td>
+                              <td className="py-3.5 px-4 text-left font-semibold text-slate-700">{recap.keterangan}</td>
                             </tr>
                           ))
                         )}
