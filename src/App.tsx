@@ -46,7 +46,8 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip,
-  Legend
+  Legend,
+  LabelList
 } from 'recharts';
 
 const STORAGE_KEY = 'halaqah_offline_db_v2';
@@ -2225,7 +2226,7 @@ export default function App() {
                 </div>
 
                 {/* 2. Bento Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 print:grid-cols-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 print:grid-cols-4">
                   {/* Card: Total Anggota */}
                   <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300 group">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-900"></div>
@@ -2239,6 +2240,23 @@ export default function App() {
                       </div>
                       <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-150 text-blue-900 flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-transform duration-300">
                         <Users className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card: Total Hadir (Disamping Total Anggota) */}
+                  <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/30 to-white p-6 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">Total Hadir</span>
+                        <h3 className="text-3xl font-black text-emerald-950 mt-1 tracking-tight">
+                          {dashboardStats.totalHadir} <span className="text-xs font-bold text-emerald-600">Anggota</span>
+                        </h3>
+                        <span className="text-[10px] text-emerald-700 mt-1 font-semibold">Hadir mengikuti kegiatan halaqah</span>
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center no-print shadow-sm group-hover:scale-105 transition-transform duration-300">
+                        <Check className="w-5 h-5 stroke-[3]" />
                       </div>
                     </div>
                   </div>
@@ -2280,77 +2298,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2.5 Presence Status Summary Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4">
-                  {/* Card: Total Hadir */}
-                  <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-all duration-300 group">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-emerald-700 uppercase tracking-widest font-black block">Total Hadir</span>
-                        <h3 className="text-3xl font-black text-emerald-800 mt-1.5 tracking-tight">
-                          {dashboardStats.totalHadir} <span className="text-xs font-bold text-emerald-600">Anggota</span>
-                        </h3>
-                        <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Hadir di Halaqah</span>
-                      </div>
-                      <div className="w-10 h-10 rounded-lg bg-emerald-500 text-white flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-all">
-                        <Check className="w-4 h-4 stroke-[3]" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card: Total Izin */}
-                  <div className="relative overflow-hidden rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-all duration-300 group">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-amber-700 uppercase tracking-widest font-black block">Total Izin</span>
-                        <h3 className="text-3xl font-black text-amber-850 mt-1.5 tracking-tight">
-                          {dashboardStats.totalIzin} <span className="text-xs font-bold text-amber-600">Anggota</span>
-                        </h3>
-                        <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Keterangan Izin</span>
-                      </div>
-                      <div className="w-10 h-10 rounded-lg bg-amber-500 text-white flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-all">
-                        <CalendarDays className="w-4 h-4 stroke-[2.5]" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card: Total Sakit */}
-                  <div className="relative overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-all duration-300 group">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-sky-500"></div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-sky-700 uppercase tracking-widest font-black block">Total Sakit</span>
-                        <h3 className="text-3xl font-black text-sky-850 mt-1.5 tracking-tight">
-                          {dashboardStats.totalSakit} <span className="text-xs font-bold text-sky-600">Anggota</span>
-                        </h3>
-                        <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Sedang Sakit</span>
-                      </div>
-                      <div className="w-10 h-10 rounded-lg bg-sky-500 text-white flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-all">
-                        <HeartPulse className="w-4 h-4 stroke-[2.5]" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card: Total Alpha */}
-                  <div className="relative overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-all duration-300 group">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-rose-700 uppercase tracking-widest font-black block">Total Alpha</span>
-                        <h3 className="text-3xl font-black text-rose-850 mt-1.5 tracking-tight">
-                          {dashboardStats.totalAlpha} <span className="text-xs font-bold text-rose-600">Anggota</span>
-                        </h3>
-                        <span className="text-[9px] text-slate-400 mt-1 block font-bold uppercase tracking-wider">Tanpa Keterangan</span>
-                      </div>
-                      <div className="w-10 h-10 rounded-lg bg-rose-500 text-white flex items-center justify-center no-print shadow-2xs group-hover:scale-105 transition-all">
-                        <X className="w-4 h-4 stroke-[3]" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* 3. Recharts Attendance Trend Bar graph (no-print) */}
                 {attendanceTrendData.length > 0 && (
                   <div className="glass-card rounded-2xl p-5 md:p-6 shadow-sm flex flex-col gap-4 no-print border border-slate-200 bg-white">
@@ -2362,7 +2309,7 @@ export default function App() {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                            data={attendanceTrendData}
-                           margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                           margin={{ top: 20, right: 10, left: -20, bottom: 0 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(15, 23, 42, 0.06)" />
                           <XAxis 
@@ -2390,7 +2337,9 @@ export default function App() {
                           <Legend 
                             wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }}
                           />
-                          <Bar dataKey="Hadir" fill="#1e3a8a" radius={[4, 4, 0, 0]} name="Jumlah Hadir" />
+                          <Bar dataKey="Hadir" fill="#1e3a8a" radius={[4, 4, 0, 0]} name="Jumlah Hadir">
+                            <LabelList dataKey="Hadir" position="top" fill="#1e3a8a" fontSize={11} fontWeight="bold" />
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
